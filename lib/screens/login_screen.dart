@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutx/flutx.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:imiziappthemed/screens/property_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -76,15 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: CupertinoTextField(
                           decoration: BoxDecoration(
                               color: theme.colorScheme.background,
-                              border:
-                                  Border.all(color: theme.colorScheme.primary)),
+                              border: Border.all(color: Colors.black)),
                           cursorColor: theme.colorScheme.primary,
                           placeholder: "Username",
                           prefix: Padding(
                             padding: const EdgeInsets.only(left: 8),
                             child: Icon(
                               MdiIcons.contactsOutline,
-                              color: theme.colorScheme.primary,
+                              color: Colors.grey,
                             ),
                           ),
                           style:
@@ -106,15 +106,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _passwordVisible,
                           decoration: BoxDecoration(
                               color: theme.colorScheme.background,
-                              border:
-                                  Border.all(color: theme.colorScheme.primary)),
+                              border: Border.all(color: Colors.black)),
                           cursorColor: theme.colorScheme.primary,
                           placeholder: "Password",
                           prefix: Padding(
                             padding: const EdgeInsets.only(left: 8),
                             child: Icon(
                               MdiIcons.lockOutline,
-                              color: theme.colorScheme.primary,
+                              color: Colors.grey,
                             ),
                           ),
                           suffix: GestureDetector(
@@ -129,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _passwordVisible
                                     ? MdiIcons.eyeOutline
                                     : MdiIcons.eyeOffOutline,
-                                color: theme.colorScheme.primary,
+                                color: Colors.grey,
                               ),
                             ),
                           ),
@@ -140,6 +139,31 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextStyle(color: theme.colorScheme.onBackground),
                           padding: const EdgeInsets.only(
                               top: 16, bottom: 16, left: 16, right: 8),
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 24.0,
+                      ),
+                      Container(
+                        width: 380.0,
+                        padding: const EdgeInsets.only(left: 16, right: 16),
+                        child: FxButton.large(
+                          elevation: 1,
+                          borderRadiusAll: 0.0,
+                          backgroundColor:
+                              const Color.fromARGB(255, 166, 160, 55),
+                          onPressed: () {
+                            // Logic to Authenticate a User
+                            Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                    builder: (_) => PropertyScreen()));
+                          },
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16), // Double the font size
+                          ),
                         ),
                       ),
                     ],
