@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:imiziappthemed/screens/login_screen.dart';
-// import 'package:imiziappthemed/screens/property_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -62,5 +61,3 @@ class _SplashScreenState extends State<SplashScreen>
     ));
   }
 }
-
-//Center(child: Image(image: AssetImage('assets/images/imiziLogo.jpg')),)
