@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import '../widgets/blocks.dart';
 import '../screens/property_screen.dart';
@@ -8,7 +7,7 @@ import 'package:flutx/flutx.dart';
 import 'package:flutter/cupertino.dart';
 
 // Lists just to see View, will set Data up to extract info for each block
-final List<String> units = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
+final List<String> uni = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
 final List<String> meters = ['Meter 1', 'Meter 2', 'Meter 3', 'Meter 4'];
 final List<int> previous = [456, 456, 456, 456];
 final List<int> average = [420, 420, 420, 420];
@@ -44,6 +43,37 @@ class Blocks {
   }
 }
 
+// Data Model for List of units
+class Units {
+  final int unitId;
+  final int blockId;
+  final int unitNumber;
+  final int propertyId;
+  final int payPropUnitId;
+  final String createDate;
+  final bool active;
+
+  Units(
+      {required this.unitId,
+      required this.blockId,
+      required this.unitNumber,
+      required this.propertyId,
+      required this.payPropUnitId,
+      required this.createDate,
+      required this.active});
+
+  factory Units.fromJson(Map<String, dynamic> json) {
+    return Units(
+        unitId: json['unitId'],
+        blockId: json['blockId'],
+        unitNumber: json['unitNumber'],
+        propertyId: json['propertyId'],
+        payPropUnitId: json['payPropUnitId'],
+        createDate: json['createDate'],
+        active: json['active']);
+  }
+}
+
 class MeterScreen extends StatefulWidget {
   final Property property;
   const MeterScreen({Key? key, required this.property}) : super(key: key);
@@ -55,7 +85,9 @@ class MeterScreen extends StatefulWidget {
 class _MeterScreenState extends State<MeterScreen> {
   late Property _prop;
   late Future<List<Blocks>> futureBlocks;
+  late Future<List<Units>> futureUnits;
   Blocks? selectedBlock; // Define selectedBlock as nullable
+  int? selectedBlockID; // To fetch the units of the selected block
 
   @override
   void initState() {
@@ -69,9 +101,14 @@ class _MeterScreenState extends State<MeterScreen> {
       if (blocks.isNotEmpty) {
         setState(() {
           selectedBlock = blocks.first;
+
+          selectedBlockID = selectedBlock?.blockId;
+          // call method to fetch units when block is clicked
+          futureUnits = fetchUnits();
         });
       }
     });
+    futureUnits = fetchUnits();
   }
 
   // Fetching the blocks from the API endpoint
@@ -93,6 +130,27 @@ class _MeterScreenState extends State<MeterScreen> {
   }
 
   //Bring List of Units when a block is pressed
+  Future<List<Units>> fetchUnits() async {
+    final Map<String, int> queryParams = {'BlockId': selectedBlockID!};
+
+    final uri =
+        Uri.https('imiziapi.codeflux.co.za', 'api/Unit/Search', queryParams);
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      List<dynamic> jsonResponse = json.decode(response.body);
+      List<Units> units =
+          jsonResponse.map((unit) => Units.fromJson(unit)).toList();
+
+      //sorting the units based on Unit Number
+      units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+      return units;
+    } else {
+      throw Exception(
+          'Could not get the List of Units from the selected Block');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,14 +198,20 @@ class _MeterScreenState extends State<MeterScreen> {
                                 .toList();
 
                             return DropdownButton<Blocks>(
-                            items: items,
-                            onChanged: (selectedBlock) {
-                              setState(() {
-                                this.selectedBlock = selectedBlock;
-                              });
-                            },
-                            value: selectedBlock, // Set initial value
-                          );
+                              items: items,
+                              onChanged: (selectedBlock) {
+                                setState(() {
+                                  this.selectedBlock = selectedBlock;
+                                  selectedBlockID = int.parse(selectedBlock
+                                          ?.blockId
+                                          .toString() ??
+                                      '0'); // BlockId to be able to select units
+
+                                  // call method to fetch units when block is clicked
+                                });
+                              },
+                              value: selectedBlock, // Set initial value
+                            );
                           }
                         }),
                   ],
@@ -202,19 +266,60 @@ class _MeterScreenState extends State<MeterScreen> {
                     child: Wrap(direction: Axis.horizontal, children: [
                       Container(
                         width: MediaQuery.of(context).size.width * 0.8 / 5,
-                        height: 40,
-                        // child: ListView.separated(
-                        //     padding: const EdgeInsets.all(2.0),
-                        //     itemBuilder: (BuildContext context, int index) {
-                        //       return Text('$units[index]');
-                        //     },
-                        //     separatorBuilder:
-                        //         (BuildContext context, int index) =>
-                        //             const SizedBox(
-                        //               height: 8.0,
-                        //             ),
-                        //     itemCount: units.length),
+                        height: MediaQuery.of(context).size.height,
                         color: Colors.blue,
+                        child: Column(
+                          children: <Widget>[
+                            Container(
+                              width: double.infinity,
+                              height: MediaQuery.of(context).size.height,
+                              child: FutureBuilder<List<Units>>(
+                                future: futureUnits,
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(
+                                          color: Color.fromARGB(
+                                              255, 166, 160, 55)),
+                                    );
+                                  } else if (snapshot.hasError) {
+                                    print(snapshot.error);
+                                    return Center(
+                                        child: Text('${snapshot.error}'));
+                                  } else {
+                                    List<Units> units = snapshot.data!;
+
+                                    return ListView.separated(
+                                        padding: const EdgeInsets.all(2.0),
+                                        itemBuilder:
+                                            (BuildContext context, index) {
+                                          Units unit = units[index];
+                                          return Text(
+                                              'Unit ${unit.unitNumber}');
+                                        },
+                                        separatorBuilder:
+                                            (BuildContext context, int index) =>
+                                                const SizedBox(height: 8.0),
+                                        itemCount: units.length);
+                                  }
+                                },
+                              ),
+                              //ListView.separated(
+                              //     padding: const EdgeInsets.all(2.0),
+                              //     itemBuilder:
+                              //         (BuildContext context, int index) {
+                              //       return Text(uni[index]);
+                              //     },
+                              //     separatorBuilder:
+                              //         (BuildContext context, int index) =>
+                              //             const SizedBox(
+                              //               height: 8.0,
+                              //             ),
+                              //     itemCount: uni.length),
+                            ),
+                          ],
+                        ),
                       ),
                       Container(
                         width: MediaQuery.of(context).size.width * 0.8 / 5,
