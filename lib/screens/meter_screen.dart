@@ -131,7 +131,11 @@ class _MeterScreenState extends State<MeterScreen> {
 
   //Bring List of Units when a block is pressed
   Future<List<Units>> fetchUnits() async {
-    final Map<String, int> queryParams = {'BlockId': selectedBlockID!};
+    final Map<String, dynamic> queryParams = {};
+
+    if (selectedBlockID != null) {
+      queryParams['BlockId'] = 1; // Include BlockId if it's not null
+    }
 
     final uri =
         Uri.https('imiziapi.codeflux.co.za', 'api/Unit/Search', queryParams);
@@ -140,11 +144,13 @@ class _MeterScreenState extends State<MeterScreen> {
 
     if (response.statusCode == 200) {
       List<dynamic> jsonResponse = json.decode(response.body);
+      print(jsonResponse);
       List<Units> units =
           jsonResponse.map((unit) => Units.fromJson(unit)).toList();
 
-      //sorting the units based on Unit Number
+      // Sorting the units based on Unit Number
       units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+      print(units);
       return units;
     } else {
       throw Exception(
@@ -202,10 +208,8 @@ class _MeterScreenState extends State<MeterScreen> {
                               onChanged: (selectedBlock) {
                                 setState(() {
                                   this.selectedBlock = selectedBlock;
-                                  selectedBlockID = int.parse(selectedBlock
-                                          ?.blockId
-                                          .toString() ??
-                                      '0'); // BlockId to be able to select units
+                                  selectedBlockID = selectedBlock
+                                      ?.blockId; // BlockId to be able to select units
 
                                   // call method to fetch units when block is clicked
                                 });
@@ -295,6 +299,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                         itemBuilder:
                                             (BuildContext context, index) {
                                           Units unit = units[index];
+                                          print(unit.unitNumber);
                                           return Text(
                                               'Unit ${unit.unitNumber}');
                                         },
