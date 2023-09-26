@@ -170,48 +170,64 @@ class _MeterScreenState extends State<MeterScreen> {
                     Text(
                       'Property Name: ${_prop.name}',
                       style: const TextStyle(
-                          fontSize: 16.0,
+                          fontSize: 17.0,
                           color: Color.fromARGB(255, 166, 160, 55),
                           fontWeight: FontWeight.bold),
                     ),
-                    FutureBuilder<List<Blocks>>(
-                        future: futureBlocks,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                  color: Color.fromARGB(255, 166, 160, 55)),
-                            );
-                          } else if (snapshot.hasError) {
-                            return Center(child: Text('${snapshot.error}'));
-                          } else {
-                            // Build Blocks Widget Here
-                            List<Blocks> blocks = snapshot.data!;
-                            List<DropdownMenuItem<Blocks>> items = blocks
-                                .map(
-                                  (block) => DropdownMenuItem<Blocks>(
-                                    value: block,
-                                    child: Text(block.blockNumber),
-                                  ),
-                                )
-                                .toList();
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: FutureBuilder<List<Blocks>>(
+                          future: futureBlocks,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                    color: Color.fromARGB(255, 166, 160, 55)),
+                              );
+                            } else if (snapshot.hasError) {
+                              return Center(child: Text('${snapshot.error}'));
+                            } else {
+                              // Build Blocks Widget Here
+                              List<Blocks> blocks = snapshot.data!;
+                              List<DropdownMenuItem<Blocks>> items = blocks
+                                  .map(
+                                    (block) => DropdownMenuItem<Blocks>(
+                                      value: block,
+                                      child: Text(block.blockNumber),
+                                    ),
+                                  )
+                                  .toList();
 
-                            return DropdownButton<Blocks>(
-                              items: items,
-                              onChanged: (selectedBlock) {
-                                setState(() {
-                                  this.selectedBlock = selectedBlock;
-                                  selectedBlockID = selectedBlock!
-                                      .blockId; // BlockId to be able to select units
-
-                                  // call method to fetch units when block is clicked
-                                });
-                              },
-                              value: selectedBlock, // Set initial value
-                            );
-                          }
-                        }),
+                              return Container(
+                                width: 130,
+                                height: 40,
+                                padding: const EdgeInsets.only(
+                                    left: 6.0, right: 2.0),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: Colors
+                                          .black), // Set the border color to black
+                                ),
+                                child: DropdownButton<Blocks>(
+                                  items: items,
+                                  isExpanded: true,
+                                  iconSize: 36.0,
+                                  underline: Container(),
+                                  onChanged: (selectedBlock) {
+                                    setState(() {
+                                      this.selectedBlock = selectedBlock;
+                                      selectedBlockID = selectedBlock!
+                                          .blockId; // BlockId to be able to select units
+                                      // call method to fetch units when block is clicked
+                                    });
+                                  },
+                                  value: selectedBlock, // Set initial value
+                                ),
+                              );
+                            }
+                          }),
+                    )
                   ],
                 ),
               ),
