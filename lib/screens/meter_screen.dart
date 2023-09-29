@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../widgets/blocks.dart';
 import '../screens/property_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutx/flutx.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:dio/dio.dart';
+// import 'package:flutter/cupertino.dart';
 
 // Lists just to see View, will set Data up to extract info for each block
 final List<String> uni = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
@@ -50,6 +50,11 @@ class Units {
   final int unitNumber;
   final int propertyId;
   final int payPropUnitId;
+  final String createDate;
+  final bool active;
+  final String blockNumber;
+  final String blockDescription;
+  final String name;
 
   Units({
     required this.unitId,
@@ -57,16 +62,25 @@ class Units {
     required this.unitNumber,
     required this.propertyId,
     required this.payPropUnitId,
+    required this.createDate,
+    required this.active,
+    required this.blockNumber,
+    required this.blockDescription,
+    required this.name,
   });
 
   factory Units.fromJson(Map<String, dynamic> json) {
     return Units(
-      unitId: json['unitId'],
-      blockId: json['blockId'],
-      unitNumber: json['unitNumber'],
-      propertyId: json['propertyId'],
-      payPropUnitId: json['payPropUnitId'],
-    );
+        unitId: json['unitId'],
+        blockId: json['blockId'],
+        unitNumber: json['unitNumber'],
+        propertyId: json['propertyId'],
+        payPropUnitId: json['payPropUnitId'],
+        createDate: json['createDate'],
+        active: json['active'],
+        blockNumber: json['blockNumber'],
+        blockDescription: json['blockDescription'],
+        name: json['name']);
   }
 }
 
@@ -87,6 +101,9 @@ class _MeterScreenState extends State<MeterScreen> {
 
   //Scroll Controller
   final ScrollController _firstController = ScrollController();
+
+  //Using DIO package to get units
+  final dio = Dio();
 
   @override
   void initState() {
@@ -128,18 +145,44 @@ class _MeterScreenState extends State<MeterScreen> {
     }
   }
 
+  // Trying Units another way
+  // late List<dynamic> data;
+
+  // Future request() async {
+  //   var options = Options();
+  //   options.contentType = 'application/json';
+  //   String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
+  //   Map<String, int> qParams = {
+  //     'blockId': selectedBlockID,
+  //     'propertyId': _prop.propertyId
+  //   };
+  //   Response response =
+  //       await dio.get(url, options: options, queryParameters: qParams);
+
+  //   print(response.data);
+
+  //   if (response.statusCode == 200) {
+  //     data = response.data;
+  //   }
+  // }
+
   //Bring List of Units when a block is pressed
   Future<List<Units>> fetchUnits() async {
-    //Base URL
-    final baseUrl =
-        Uri.parse('https://imiziapi.codeflux.co.za/api/Unit/Search');
+    var options = Options();
+    options.contentType = 'application/json';
+    String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
+    Map<String, int> qParams = {
+      'blockId': selectedBlockID,
+      'propertyId': _prop.propertyId
+    };
+    Response response =
+        await dio.get(url, options: options, queryParameters: qParams);
 
-    final uri = baseUrl.replace(queryParameters: {'BlockId': selectedBlockID});
-
-    final response = await http.get(uri);
+    print(response.data);
 
     if (response.statusCode == 200) {
-      List<dynamic> jsonResponse = json.decode(response.body);
+      // Fix decoding here
+      List<dynamic> jsonResponse = response.data;
       List<Units> units =
           jsonResponse.map((unit) => Units.fromJson(unit)).toList();
 
@@ -314,9 +357,8 @@ class _MeterScreenState extends State<MeterScreen> {
                                           itemBuilder:
                                               (BuildContext context, index) {
                                             Units unit = units[index];
-                                            print(unit.unitNumber);
-                                            return Text(
-                                                'Unit ${unit.unitNumber}');
+
+                                            return Text('Unit ');
                                           },
                                           separatorBuilder:
                                               (BuildContext context,

@@ -39,6 +39,7 @@ dependencies:
   flutkit: ^0.0.7
   material_design_icons_flutter: ^7.0.7296
   http: ^1.1.0
+  dio: ^5.3.3
 
 dev_dependencies:
   flutter_test:
