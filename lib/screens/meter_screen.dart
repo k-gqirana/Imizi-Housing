@@ -95,7 +95,8 @@ class MeterScreen extends StatefulWidget {
 class _MeterScreenState extends State<MeterScreen> {
   late Property _prop;
   late Future<List<Blocks>> futureBlocks;
-  late Future<List<Units>> futureUnits;
+  // late Future<List<Units>> futureUnits;
+  late Future<List<dynamic>> fetch;
   Blocks? selectedBlock; // Define selectedBlock as nullable
   late int selectedBlockID; // To fetch the units of the selected block
 
@@ -120,11 +121,12 @@ class _MeterScreenState extends State<MeterScreen> {
 
           selectedBlockID = selectedBlock!.blockId;
           // call method to fetch units when block is clicked
-          futureUnits = fetchUnits();
+          // futureUnits = fetchUnits();
+          fetch = request();
         });
       }
     });
-    futureUnits = fetchUnits();
+    fetch = request();
   }
 
   // Fetching the blocks from the API endpoint
@@ -145,29 +147,9 @@ class _MeterScreenState extends State<MeterScreen> {
     }
   }
 
-  // Trying Units another way
-  // late List<dynamic> data;
+  //Trying Units another way
 
-  // Future request() async {
-  //   var options = Options();
-  //   options.contentType = 'application/json';
-  //   String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
-  //   Map<String, int> qParams = {
-  //     'blockId': selectedBlockID,
-  //     'propertyId': _prop.propertyId
-  //   };
-  //   Response response =
-  //       await dio.get(url, options: options, queryParameters: qParams);
-
-  //   print(response.data);
-
-  //   if (response.statusCode == 200) {
-  //     data = response.data;
-  //   }
-  // }
-
-  //Bring List of Units when a block is pressed
-  Future<List<Units>> fetchUnits() async {
+  Future<List<dynamic>> request() async {
     var options = Options();
     options.contentType = 'application/json';
     String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
@@ -181,19 +163,42 @@ class _MeterScreenState extends State<MeterScreen> {
     print(response.data);
 
     if (response.statusCode == 200) {
-      // Fix decoding here
-      List<dynamic> jsonResponse = response.data;
-      List<Units> units =
-          jsonResponse.map((unit) => Units.fromJson(unit)).toList();
-
-      // Sorting the units based on Unit Number
-      units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
-      return units;
+      List<dynamic> data = response.data;
+      return data;
     } else {
       throw Exception(
           'Could not get the List of Units from the selected Block');
     }
   }
+
+  //Bring List of Units when a block is pressed
+  // Future<List<Units>> fetchUnits() async {
+  //   var options = Options();
+  //   options.contentType = 'application/json';
+  //   String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
+  //   Map<String, int> qParams = {
+  //     'blockId': selectedBlockID,
+  //     'propertyId': _prop.propertyId
+  //   };
+  //   Response response =
+  //       await dio.get(url, options: options, queryParameters: qParams);
+
+  //   print(response.data);
+
+  //   if (response.statusCode == 200) {
+  //     // Fix decoding here
+  //     List<dynamic> jsonResponse = response.data;
+  //     List<Units> units =
+  //         jsonResponse.map((unit) => Units.fromJson(unit)).toList();
+
+  //     // Sorting the units based on Unit Number
+  //     units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+  //     return units;
+  //   } else {
+  //     throw Exception(
+  //         'Could not get the List of Units from the selected Block');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +268,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                       selectedBlockID = selectedBlock!
                                           .blockId; // BlockId to be able to select units
                                       // call method to fetch units when block is clicked
+                                      fetch = request();
                                     });
                                   },
                                   value: selectedBlock, // Set initial value
@@ -336,8 +342,8 @@ class _MeterScreenState extends State<MeterScreen> {
                               Container(
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
-                                child: FutureBuilder<List<Units>>(
-                                  future: futureUnits,
+                                child: FutureBuilder(
+                                  future: fetch,
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState ==
                                         ConnectionState.waiting) {
@@ -350,21 +356,21 @@ class _MeterScreenState extends State<MeterScreen> {
                                       return Center(
                                           child: Text('${snapshot.error}'));
                                     } else {
-                                      List<Units> units = snapshot.data!;
+                                      // List<Units> units = snapshot.data!;
+                                      List<dynamic> data = snapshot.data!;
 
                                       return ListView.separated(
                                           padding: const EdgeInsets.all(2.0),
                                           itemBuilder:
                                               (BuildContext context, index) {
-                                            Units unit = units[index];
-
-                                            return Text('Unit ');
+                                            return Text(
+                                                'Unit ${data[index]['unitNumber']}');
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
                                                       int index) =>
                                                   const SizedBox(height: 8.0),
-                                          itemCount: units.length);
+                                          itemCount: data.length);
                                     }
                                   },
                                 ),
