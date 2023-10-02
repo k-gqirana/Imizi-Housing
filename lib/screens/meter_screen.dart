@@ -4,7 +4,7 @@ import '../screens/property_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutx/flutx.dart';
 import 'package:dio/dio.dart';
-// import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart';
 
 // Lists just to see View, will set Data up to extract info for each block
 final List<String> uni = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
@@ -49,7 +49,7 @@ class Units {
   final int blockId;
   final int unitNumber;
   final int propertyId;
-  final int payPropUnitId;
+  final String payPropUnitId;
   final String createDate;
   final bool active;
   final String blockNumber;
@@ -84,6 +84,40 @@ class Units {
   }
 }
 
+// Data Model for Meters
+class Meters {
+  final int meterId;
+  final int unitId;
+  final String meterNumber;
+  final String createDate;
+  final bool active;
+  final String meterType;
+  final int blockId;
+  final int propertyId;
+
+  Meters(
+      {required this.meterId,
+      required this.unitId,
+      required this.meterNumber,
+      required this.createDate,
+      required this.active,
+      required this.meterType,
+      required this.blockId,
+      required this.propertyId});
+
+  factory Meters.fromJson(Map<String, dynamic> json) {
+    return Meters(
+        meterId: json['meterId'],
+        unitId: json['unitId'],
+        meterNumber: json['meterNumber'],
+        createDate: json['createDate'],
+        active: json['active'],
+        meterType: json['meterType'],
+        blockId: json['blockId'],
+        propertyId: json['propertyId']);
+  }
+}
+
 class MeterScreen extends StatefulWidget {
   final Property property;
   const MeterScreen({Key? key, required this.property}) : super(key: key);
@@ -95,8 +129,9 @@ class MeterScreen extends StatefulWidget {
 class _MeterScreenState extends State<MeterScreen> {
   late Property _prop;
   late Future<List<Blocks>> futureBlocks;
-  // late Future<List<Units>> futureUnits;
-  late Future<List<dynamic>> fetch;
+  late Future<List<Units>> futureUnits;
+  late Future<List<Meters>> futureMeters;
+  // late Future<List<dynamic>> fetch;
   Blocks? selectedBlock; // Define selectedBlock as nullable
   late int selectedBlockID; // To fetch the units of the selected block
 
@@ -118,15 +153,17 @@ class _MeterScreenState extends State<MeterScreen> {
       if (blocks.isNotEmpty) {
         setState(() {
           selectedBlock = blocks.first;
-
           selectedBlockID = selectedBlock!.blockId;
           // call method to fetch units when block is clicked
-          // futureUnits = fetchUnits();
-          fetch = request();
+          futureUnits = fetchUnits();
+
+          // fetch = request();
         });
       }
     });
-    fetch = request();
+    // fetch = request();
+    futureMeters = fetchMeters();
+    futureUnits = fetchUnits();
   }
 
   // Fetching the blocks from the API endpoint
@@ -149,30 +186,7 @@ class _MeterScreenState extends State<MeterScreen> {
 
   //Trying Units another way
 
-  Future<List<dynamic>> request() async {
-    var options = Options();
-    options.contentType = 'application/json';
-    String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
-    Map<String, int> qParams = {
-      'blockId': selectedBlockID,
-      'propertyId': _prop.propertyId
-    };
-    Response response =
-        await dio.get(url, options: options, queryParameters: qParams);
-
-    print(response.data);
-
-    if (response.statusCode == 200) {
-      List<dynamic> data = response.data;
-      return data;
-    } else {
-      throw Exception(
-          'Could not get the List of Units from the selected Block');
-    }
-  }
-
-  //Bring List of Units when a block is pressed
-  // Future<List<Units>> fetchUnits() async {
+  // Future<List<dynamic>> request() async {
   //   var options = Options();
   //   options.contentType = 'application/json';
   //   String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
@@ -186,19 +200,57 @@ class _MeterScreenState extends State<MeterScreen> {
   //   print(response.data);
 
   //   if (response.statusCode == 200) {
-  //     // Fix decoding here
-  //     List<dynamic> jsonResponse = response.data;
-  //     List<Units> units =
-  //         jsonResponse.map((unit) => Units.fromJson(unit)).toList();
-
-  //     // Sorting the units based on Unit Number
-  //     units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
-  //     return units;
+  //     List<dynamic> data = response.data;
+  //     return data;
   //   } else {
   //     throw Exception(
   //         'Could not get the List of Units from the selected Block');
   //   }
   // }
+
+  //Bring List of Units when a block is pressed
+  Future<List<Units>> fetchUnits() async {
+    var options = Options();
+    options.contentType = 'application/json';
+    String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
+    Map<String, int> qParams = {
+      'blockId': selectedBlockID,
+      'propertyId': _prop.propertyId
+    };
+    Response response =
+        await dio.get(url, options: options, queryParameters: qParams);
+    if (response.statusCode == 200) {
+      // Fix decoding here
+      List<dynamic> jsonResponse = response.data;
+      List<Units> units =
+          jsonResponse.map((unit) => Units.fromJson(unit)).toList();
+
+      // Sorting the units based on Unit Number
+      units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+      return units;
+    } else {
+      throw Exception(
+          'Could not get the List of Units from the selected Block');
+    }
+  }
+
+  // Fetching Meters for Units
+  Future<List<Meters>> fetchMeters() async {
+    final response =
+        await http.get(Uri.parse('https://imiziapi.codeflux.co.za/api/Meter'));
+    // pass {propertyId}/{blockId}/{unitId} to get specific Meters
+
+    if (response.statusCode == 200) {
+      List<dynamic> jsonResponse = json.decode(response.body);
+      print(jsonResponse);
+      List<Meters> meters =
+          jsonResponse.map((unit) => Meters.fromJson(unit)).toList();
+      // Find a way to sort Meters by Unit Number
+      return meters;
+    } else {
+      throw Exception('Could not get List of Meters');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +320,8 @@ class _MeterScreenState extends State<MeterScreen> {
                                       selectedBlockID = selectedBlock!
                                           .blockId; // BlockId to be able to select units
                                       // call method to fetch units when block is clicked
-                                      fetch = request();
+                                      // fetch = request();
+                                      futureUnits = fetchUnits();
                                     });
                                   },
                                   value: selectedBlock, // Set initial value
@@ -343,7 +396,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
                                 child: FutureBuilder(
-                                  future: fetch,
+                                  future: futureUnits,
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState ==
                                         ConnectionState.waiting) {
@@ -356,21 +409,22 @@ class _MeterScreenState extends State<MeterScreen> {
                                       return Center(
                                           child: Text('${snapshot.error}'));
                                     } else {
-                                      // List<Units> units = snapshot.data!;
-                                      List<dynamic> data = snapshot.data!;
+                                      List<Units> units = snapshot.data!;
+                                      // List<dynamic> data = snapshot.data!;
 
                                       return ListView.separated(
-                                          padding: const EdgeInsets.all(2.0),
+                                          padding: const EdgeInsets.all(6.0),
                                           itemBuilder:
                                               (BuildContext context, index) {
+                                            Units unit = units[index];
                                             return Text(
-                                                'Unit ${data[index]['unitNumber']}');
+                                                'Unit ${unit.unitNumber}');
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
                                                       int index) =>
                                                   const SizedBox(height: 8.0),
-                                          itemCount: data.length);
+                                          itemCount: units.length);
                                     }
                                   },
                                 ),
@@ -387,6 +441,35 @@ class _MeterScreenState extends State<MeterScreen> {
                               Container(
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
+                                child: FutureBuilder(
+                                    future: futureMeters,
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child: CircularProgressIndicator(
+                                                color: Color.fromARGB(
+                                                    255, 166, 160, 55)));
+                                      } else if (snapshot.hasError) {
+                                        return Center(
+                                            child: Text('${snapshot.error}'));
+                                      } else {
+                                        List<Meters> meters = snapshot.data!;
+                                        return ListView.separated(
+                                          padding: EdgeInsets.all(6.0),
+                                          itemCount: meters.length,
+                                          itemBuilder:
+                                              (BuildContext context, index) {
+                                            Meters meter = meters[index];
+                                            return Text('${meter.meterNumber}');
+                                          },
+                                          separatorBuilder:
+                                              (BuildContext context,
+                                                      int index) =>
+                                                  const SizedBox(height: 8.0),
+                                        );
+                                      }
+                                    }),
                               ),
                             ],
                           ),
@@ -402,6 +485,61 @@ class _MeterScreenState extends State<MeterScreen> {
                               Container(
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
+                                child: FutureBuilder(
+                                  future: futureUnits,
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Center(
+                                          child: CircularProgressIndicator(
+                                              color: Color.fromARGB(
+                                                  255, 166, 160, 55)));
+                                    } else if (snapshot.hasError) {
+                                      return Center(
+                                          child: Text('${snapshot.error}'));
+                                    } else {
+                                      List<Units> units = snapshot.data!;
+                                      return ListView.separated(
+                                          padding: const EdgeInsets.all(6.0),
+                                          itemBuilder: (BuildContext context,
+                                              int index) {
+                                            return Container(
+                                              child: CupertinoTextField(
+                                                decoration: BoxDecoration(
+                                                    color: theme
+                                                        .colorScheme.background,
+                                                    border: Border.all(
+                                                        color: Colors.black)),
+                                                cursorColor:
+                                                    theme.colorScheme.primary,
+                                                placeholder:
+                                                    "Enter Meter Reading",
+                                                style: TextStyle(
+                                                    color: theme.colorScheme
+                                                        .onBackground,
+                                                    fontSize: 14),
+                                                padding: const EdgeInsets.only(
+                                                    top: 8,
+                                                    bottom: 8,
+                                                    left: 8,
+                                                    right: 4),
+                                                placeholderStyle: TextStyle(
+                                                    color: theme.colorScheme
+                                                        .onBackground
+                                                        .withAlpha(160)),
+                                              ),
+                                            );
+                                          },
+                                          separatorBuilder:
+                                              (BuildContext context,
+                                                      int index) =>
+                                                  const SizedBox(
+                                                    height: 8.0,
+                                                  ),
+                                          itemCount: units.length);
+                                    }
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -494,33 +632,7 @@ class _MeterScreenState extends State<MeterScreen> {
 //                                             height: 8.0,
 //                                           ),
 //                                   itemCount: meters.length),
-//                           ListView.separated(
-//                               padding: const EdgeInsets.all(2.0),
-//                               itemBuilder: (BuildContext context, int index) {
-//                                 return Container(
-//                                   child: CupertinoTextField(
-//                                     decoration: BoxDecoration(
-//                                         color: theme.colorScheme.background,
-//                                         border:
-//                                             Border.all(color: Colors.black)),
-//                                     cursorColor: theme.colorScheme.primary,
-//                                     placeholder: "Enter Meter Reading",
-//                                     style: TextStyle(
-//                                         color: theme.colorScheme.onBackground),
-//                                     padding: const EdgeInsets.only(
-//                                         top: 8, bottom: 8, left: 8, right: 4),
-//                                     placeholderStyle: TextStyle(
-//                                         color: theme.colorScheme.onBackground
-//                                             .withAlpha(160)),
-//                                   ),
-//                                 );
-//                               },
-//                               separatorBuilder:
-//                                   (BuildContext context, int index) =>
-//                                       const SizedBox(
-//                                         height: 8.0,
-//                                       ),
-//                               itemCount: meters.length),
+
 //                           ListView.separated(
 //                               padding: const EdgeInsets.all(2.0),
 //                               itemBuilder: (BuildContext context, int index) {
