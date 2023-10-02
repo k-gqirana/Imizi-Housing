@@ -413,17 +413,26 @@ class _MeterScreenState extends State<MeterScreen> {
                                       // List<dynamic> data = snapshot.data!;
 
                                       return ListView.separated(
-                                          padding: const EdgeInsets.all(6.0),
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.only(
+                                              left: 15.0,
+                                              top: 10.0,
+                                              bottom: 25.0,
+                                              right: 10.0),
                                           itemBuilder:
                                               (BuildContext context, index) {
                                             Units unit = units[index];
                                             return Text(
-                                                'Unit ${unit.unitNumber}');
+                                              'Unit ${unit.unitNumber}',
+                                              style: const TextStyle(
+                                                  fontSize: 16.0),
+                                            );
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
                                                       int index) =>
-                                                  const SizedBox(height: 8.0),
+                                                  const SizedBox(height: 32.5),
                                           itemCount: units.length);
                                     }
                                   },
@@ -456,17 +465,27 @@ class _MeterScreenState extends State<MeterScreen> {
                                       } else {
                                         List<Meters> meters = snapshot.data!;
                                         return ListView.separated(
-                                          padding: EdgeInsets.all(6.0),
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.only(
+                                              left: 15.0,
+                                              top: 10.0,
+                                              bottom: 25.0,
+                                              right: 10.0),
                                           itemCount: meters.length,
                                           itemBuilder:
                                               (BuildContext context, index) {
                                             Meters meter = meters[index];
-                                            return Text('${meter.meterNumber}');
+                                            return Text(
+                                              '${meter.meterNumber}',
+                                              style: const TextStyle(
+                                                  fontSize: 16.0),
+                                            );
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
                                                       int index) =>
-                                                  const SizedBox(height: 8.0),
+                                                  const SizedBox(height: 34.0),
                                         );
                                       }
                                     }),
@@ -500,7 +519,13 @@ class _MeterScreenState extends State<MeterScreen> {
                                     } else {
                                       List<Units> units = snapshot.data!;
                                       return ListView.separated(
-                                          padding: const EdgeInsets.all(6.0),
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.only(
+                                              right: 8.0,
+                                              left: 8.0,
+                                              top: 8.0,
+                                              bottom: 16.0),
                                           itemBuilder: (BuildContext context,
                                               int index) {
                                             return Container(
@@ -534,7 +559,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                               (BuildContext context,
                                                       int index) =>
                                                   const SizedBox(
-                                                    height: 8.0,
+                                                    height: 22.0,
                                                   ),
                                           itemCount: units.length);
                                     }
@@ -575,38 +600,81 @@ class _MeterScreenState extends State<MeterScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.only(
-                    left: 31.0, top: 18.0, bottom: 1.0, right: 18.0),
+                    left: 31.0, top: 28.0, bottom: 1.0, right: 18.0),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment
+                      .spaceBetween, // Home and Submit buttons at flex ends
                   children: <Widget>[
+                    // Spacer to push buttons to the flex ends
                     FxButton.medium(
                       elevation: 1,
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 207, 119, 40),
                       onPressed: () {
-                        // Logic to Navigate back to Home Screen
+                        // Logic for 'Home' button
                         Navigator.of(context).pushReplacement(MaterialPageRoute(
-                            builder: (_) => PropertyScreen()));
+                          builder: (_) => PropertyScreen(),
+                        ));
                       },
                       child: const Text(
                         'Home',
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16), // Double the font size
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
+                    // SizedBox(width: 16), // Add spacing between buttons
+
+                    Spacer(), // Spacer to center the 'Next' and 'Previous' buttons
+                    FxButton.medium(
+                      elevation: 1,
+                      borderRadiusAll: 0.0,
+                      backgroundColor: const Color.fromARGB(255, 166, 160, 55),
+                      onPressed: () {
+                        // Logic for Previous button
+                        // Implement pagination here
+                      },
+                      child: const Text(
+                        '<<',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16), // Add some spacing between the buttons
+                    FxButton.medium(
+                      elevation: 1,
+                      borderRadiusAll: 0.0,
+                      backgroundColor: const Color.fromARGB(255, 166, 160, 55),
+                      onPressed: () {
+                        // Logic for Next button
+                        // Implement pagination here
+                      },
+                      child: const Text(
+                        '>>',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    Spacer(),
                     FxButton.medium(
                       elevation: 1,
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 207, 119, 40),
                       onPressed: () {
-                        // Logic to Post all recorded Meter readings back to the Server
+                        // Logic for 'Submit' button
+                        // Implement the submission logic here
                       },
                       child: const Text(
                         'Submit',
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16), // Double the font size
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -619,39 +687,3 @@ class _MeterScreenState extends State<MeterScreen> {
     );
   }
 }
-
-//  ListView.separated(
-//                                   padding: const EdgeInsets.all(2.0),
-//                                   itemBuilder:
-//                                       (BuildContext context, int index) {
-//                                     return Text('$meters[index]');
-//                                   },
-//                                   separatorBuilder:
-//                                       (BuildContext context, int index) =>
-//                                           const SizedBox(
-//                                             height: 8.0,
-//                                           ),
-//                                   itemCount: meters.length),
-
-//                           ListView.separated(
-//                               padding: const EdgeInsets.all(2.0),
-//                               itemBuilder: (BuildContext context, int index) {
-//                                 return Text('$previous[index]');
-//                               },
-//                               separatorBuilder:
-//                                   (BuildContext context, int index) =>
-//                                       const SizedBox(
-//                                         height: 8.0,
-//                                       ),
-//                               itemCount: previous.length),
-//                           ListView.separated(
-//                               padding: const EdgeInsets.all(2.0),
-//                               itemBuilder: (BuildContext context, int index) {
-//                                 return Text('$average[index]');
-//                               },
-//                               separatorBuilder:
-//                                   (BuildContext context, int index) =>
-//                                       const SizedBox(
-//                                         height: 8.0,
-//                                       ),
-//                               itemCount: average.length),
