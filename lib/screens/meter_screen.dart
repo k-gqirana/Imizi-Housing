@@ -118,6 +118,56 @@ class Meters {
   }
 }
 
+// Getting Everything for the MeterScreen
+// Required params for enpoint are: year, month, selectedBlockId
+class MeterReading {
+  final int propertyId;
+  final String name;
+  final int blockId;
+  final String blockNumber;
+  final int unitId;
+  final int meterId;
+  final String meterNumber;
+  final int reading;
+  final int previous;
+  final int unitNumber;
+  final int average;
+  final int month;
+  final int year;
+
+  MeterReading(
+      {required this.propertyId,
+      required this.name,
+      required this.blockId,
+      required this.blockNumber,
+      required this.unitId,
+      required this.meterId,
+      required this.meterNumber,
+      required this.reading,
+      required this.previous,
+      required this.unitNumber,
+      required this.average,
+      required this.month,
+      required this.year});
+
+  factory MeterReading.fromJson(Map<String, dynamic> json) {
+    return MeterReading(
+        propertyId: json['propertyId'],
+        name: json['name'],
+        blockId: json['blockId'],
+        blockNumber: json['blockNumber'],
+        unitId: json['unitId'],
+        meterId: json['meterId'],
+        meterNumber: json['meterNumber'],
+        reading: json['reading'],
+        previous: json['previous'],
+        unitNumber: json['unitNumber'],
+        average: json['average'],
+        month: json['month'],
+        year: json['year']);
+  }
+}
+
 class MeterScreen extends StatefulWidget {
   final Property property;
   const MeterScreen({Key? key, required this.property}) : super(key: key);
@@ -251,6 +301,50 @@ class _MeterScreenState extends State<MeterScreen> {
       throw Exception('Could not get List of Meters');
     }
   }
+
+  // Pagination Funtionality:
+  int currentPage = 0; //Keeping track of current Page
+  int itemsPerPage = 6; //Number of items to Display per page
+
+  // Displaying capped List of Units
+  List<Units> getUnitsForCurrentPage(List<Units> allUnits) {
+    final startIndex = currentPage * itemsPerPage;
+
+    // Ensure startIndex is within a valid range
+    if (startIndex >= allUnits.length) {
+      return [];
+    }
+
+    final endIndex = startIndex + itemsPerPage;
+
+    // Ensure endIndex doesn't exceed the total number of items
+    if (endIndex > allUnits.length) {
+      return allUnits.sublist(startIndex);
+    } else {
+      return allUnits.sublist(startIndex, endIndex);
+    }
+  }
+
+  //Displaying capped List of Meters
+  List<Meters> getMetersForCurrentPage(List<Meters> allMeters) {
+    final startIndex = currentPage * itemsPerPage;
+
+    // Ensure startIndex is within a valid range
+    if (startIndex >= allMeters.length) {
+      return [];
+    }
+
+    final endIndex = startIndex + itemsPerPage;
+
+    // Ensure endIndex doesn't exceed the total number of items
+    if (endIndex > allMeters.length) {
+      return allMeters.sublist(startIndex);
+    } else {
+      return allMeters.sublist(startIndex, endIndex);
+    }
+  }
+
+  // Displaying capped List of TextFields
 
   @override
   Widget build(BuildContext context) {
@@ -409,31 +503,33 @@ class _MeterScreenState extends State<MeterScreen> {
                                       return Center(
                                           child: Text('${snapshot.error}'));
                                     } else {
+                                      // List<dynamic> data = snapshot.data!
                                       List<Units> units = snapshot.data!;
-                                      // List<dynamic> data = snapshot.data!;
+                                      final unitsToDisplay =
+                                          getUnitsForCurrentPage(units);
 
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
                                               left: 15.0,
-                                              top: 10.0,
+                                              top: 15.0,
                                               bottom: 25.0,
                                               right: 10.0),
                                           itemBuilder:
                                               (BuildContext context, index) {
-                                            Units unit = units[index];
+                                            Units unit = unitsToDisplay[index];
                                             return Text(
                                               'Unit ${unit.unitNumber}',
-                                              style: const TextStyle(
-                                                  fontSize: 16.0),
+                                              style:
+                                                  const TextStyle(fontSize: 16),
                                             );
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
                                                       int index) =>
-                                                  const SizedBox(height: 32.5),
-                                          itemCount: units.length);
+                                                  const SizedBox(height: 34),
+                                          itemCount: unitsToDisplay.length);
                                     }
                                   },
                                 ),
@@ -464,6 +560,8 @@ class _MeterScreenState extends State<MeterScreen> {
                                             child: Text('${snapshot.error}'));
                                       } else {
                                         List<Meters> meters = snapshot.data!;
+                                        final metersToDisplay =
+                                            getMetersForCurrentPage(meters);
                                         return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -472,15 +570,12 @@ class _MeterScreenState extends State<MeterScreen> {
                                               top: 10.0,
                                               bottom: 25.0,
                                               right: 10.0),
-                                          itemCount: meters.length,
+                                          itemCount: metersToDisplay.length,
                                           itemBuilder:
                                               (BuildContext context, index) {
-                                            Meters meter = meters[index];
-                                            return Text(
-                                              '${meter.meterNumber}',
-                                              style: const TextStyle(
-                                                  fontSize: 16.0),
-                                            );
+                                            Meters meter =
+                                                metersToDisplay[index];
+                                            return Text('${meter.meterNumber}');
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
@@ -518,6 +613,8 @@ class _MeterScreenState extends State<MeterScreen> {
                                           child: Text('${snapshot.error}'));
                                     } else {
                                       List<Units> units = snapshot.data!;
+                                      final unitsToDisplay =
+                                          getUnitsForCurrentPage(units);
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -528,6 +625,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                               bottom: 16.0),
                                           itemBuilder: (BuildContext context,
                                               int index) {
+                                            // Units unit = unitsToDisplay[index];
                                             return Container(
                                               child: CupertinoTextField(
                                                 decoration: BoxDecoration(
@@ -561,7 +659,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                                   const SizedBox(
                                                     height: 22.0,
                                                   ),
-                                          itemCount: units.length);
+                                          itemCount: unitsToDisplay.length);
                                     }
                                   },
                                 ),
@@ -632,8 +730,11 @@ class _MeterScreenState extends State<MeterScreen> {
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 166, 160, 55),
                       onPressed: () {
-                        // Logic for Previous button
-                        // Implement pagination here
+                        if (currentPage > 0) {
+                          setState(() {
+                            currentPage--;
+                          });
+                        }
                       },
                       child: const Text(
                         '<<',
@@ -648,9 +749,17 @@ class _MeterScreenState extends State<MeterScreen> {
                       elevation: 1,
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 166, 160, 55),
-                      onPressed: () {
-                        // Logic for Next button
-                        // Implement pagination here
+                      onPressed: () async {
+                        final List<Units> allUnits =
+                            await futureUnits; // Wait for the future to complete
+                        final List<Meters> allMeters = await futureMeters;
+                        final totalPages =
+                            (allUnits.length / itemsPerPage).ceil();
+                        if (currentPage < totalPages - 1) {
+                          setState(() {
+                            currentPage++;
+                          });
+                        }
                       },
                       child: const Text(
                         '>>',
