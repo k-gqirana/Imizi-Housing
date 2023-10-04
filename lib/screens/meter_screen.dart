@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutx/flutx.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import '../widgets/keypad.dart';
 
 //Data Model for Blocks associated with each property
 class Blocks {
@@ -289,7 +290,6 @@ class _MeterScreenState extends State<MeterScreen> {
 
     if (response.statusCode == 200) {
       List<dynamic> jsonResponse = json.decode(response.body);
-      print(jsonResponse);
       List<Meters> meters =
           jsonResponse.map((unit) => Meters.fromJson(unit)).toList();
       // Find a way to sort Meters by Unit Number
@@ -307,6 +307,7 @@ class _MeterScreenState extends State<MeterScreen> {
         'https://imiziapi.codeflux.co.za/api/MeterReading/search/$year/$month/$selectedBlockID'));
     if (response.statusCode == 200) {
       List<dynamic> jsonResponse = json.decode(response.body);
+      print(jsonResponse);
       List<MeterReading> meterReadings = jsonResponse
           .map((meterReading) => MeterReading.fromJson(meterReading))
           .toList();
@@ -379,6 +380,52 @@ class _MeterScreenState extends State<MeterScreen> {
       return meterReadings.sublist(startIndex, endIndex);
     }
   }
+
+  // Handling the Text in the custom Keypad
+  TextEditingController _selectedTextFieldController = TextEditingController();
+  //updating the selected text field
+  void updateSelectedTextField(TextEditingController controller) {
+    setState(() {
+      _selectedTextFieldController = controller;
+    });
+  }
+
+  //Function to show the CustomKeypad when a Textfield input is tapped
+  void showCustomKeypad(
+      BuildContext context, TextEditingController controller) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: CustomKeypad(
+            onKeypadButtonPressed: (String buttonText) {
+              if (buttonText == 'C') {
+                controller.clear();
+              } else if (buttonText == '<') {
+                if (controller.text.isNotEmpty) {
+                  controller.text =
+                      controller.text.substring(0, controller.text.length - 1);
+                }
+                // Close the keypad widget
+                Navigator.of(context).pop();
+              } else if (buttonText == 'Submit') {
+                // Handle submit button press, to post readings to API
+                String enteredText = controller.text;
+                print('Entered Text: $enteredText');
+                // Close the keypad widget
+                Navigator.of(context).pop();
+              } else {
+                controller.text += buttonText;
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // Define a list of controllers outside the FutureBuilder
+  List<TextEditingController> textControllers = [];
 
   @override
   Widget build(BuildContext context) {
@@ -541,7 +588,11 @@ class _MeterScreenState extends State<MeterScreen> {
                                       List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
                                           getMeterReadingForCurrentPage(units);
-
+                                      // Populate the list of controllers based on the number of units
+                                      textControllers = List.generate(
+                                        unitsToDisplay.length,
+                                        (index) => TextEditingController(),
+                                      );
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -573,7 +624,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.82 / 5,
+                          width: MediaQuery.of(context).size.width * 0.85 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.amber,
                           child: Column(
@@ -612,7 +663,11 @@ class _MeterScreenState extends State<MeterScreen> {
                                               (BuildContext context, index) {
                                             MeterReading meter =
                                                 metersToDisplay[index];
-                                            return Text('${meter.meterNumber}');
+                                            return Text(
+                                              '${meter.meterNumber}',
+                                              style: const TextStyle(
+                                                  fontSize: 14.0),
+                                            );
                                           },
                                           separatorBuilder:
                                               (BuildContext context,
@@ -663,8 +718,15 @@ class _MeterScreenState extends State<MeterScreen> {
                                           itemBuilder: (BuildContext context,
                                               int index) {
                                             // Units unit = unitsToDisplay[index];
+
                                             return Container(
                                               child: CupertinoTextField(
+                                                onTap: () {
+                                                  showCustomKeypad(context,
+                                                      textControllers[index]);
+                                                },
+                                                controller:
+                                                    textControllers[index],
                                                 decoration: BoxDecoration(
                                                     color: theme
                                                         .colorScheme.background,
@@ -705,7 +767,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.82 / 5,
+                          width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.orange,
                           child: Column(
@@ -762,7 +824,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.82 / 5,
+                          width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.red,
                           child: Column(children: <Widget>[
@@ -874,9 +936,9 @@ class _MeterScreenState extends State<MeterScreen> {
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 166, 160, 55),
                       onPressed: () async {
-                        final List<Units> allUnits =
-                            await futureUnits; // Wait for the future to complete
-                        final List<Meters> allMeters = await futureMeters;
+                        final List<MeterReading> allUnits =
+                            await futureMeterReading; // Wait for the future to complete
+                        // final List<Meters> allMeters = await futureMeters;
                         final totalPages =
                             (allUnits.length / itemsPerPage).ceil();
                         if (currentPage < totalPages - 1) {

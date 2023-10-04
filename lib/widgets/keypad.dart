@@ -28,7 +28,8 @@ class _CustomKeypadState extends State<CustomKeypad> {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.black),
           ),
-          width: 305, // Set the width to 400
+          width: 260,
+          height: MediaQuery.of(context).size.height,
           child: Padding(
             padding: EdgeInsets.all(
                 10.0), // Add padding between the container and buttons
@@ -42,7 +43,7 @@ class _CustomKeypadState extends State<CustomKeypad> {
               itemBuilder: (context, index) {
                 return GestureDetector(
                   onTap: () {
-                    onKeypadButtonPressed(keypadButtons[index]);
+                    widget.onKeypadButtonPressed(keypadButtons[index]);
                   },
                   child: Container(
                     decoration: BoxDecoration(
