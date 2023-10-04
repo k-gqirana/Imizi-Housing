@@ -1,24 +1,9 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('Custom Keypad Example'),
-        ),
-        body: CustomKeypad(),
-      ),
-    );
-  }
-}
-
 class CustomKeypad extends StatefulWidget {
+  final Function(String) onKeypadButtonPressed;
+  CustomKeypad({required this.onKeypadButtonPressed});
+
   @override
   _CustomKeypadState createState() => _CustomKeypadState();
 }

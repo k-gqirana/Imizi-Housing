@@ -6,12 +6,6 @@ import 'package:flutx/flutx.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 
-// Lists just to see View, will set Data up to extract info for each block
-final List<String> uni = ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'];
-final List<String> meters = ['Meter 1', 'Meter 2', 'Meter 3', 'Meter 4'];
-final List<int> previous = [456, 456, 456, 456];
-final List<int> average = [420, 420, 420, 420];
-
 //Data Model for Blocks associated with each property
 class Blocks {
   final int blockId;
@@ -181,6 +175,7 @@ class _MeterScreenState extends State<MeterScreen> {
   late Future<List<Blocks>> futureBlocks;
   late Future<List<Units>> futureUnits;
   late Future<List<Meters>> futureMeters;
+  late Future<List<MeterReading>> futureMeterReading;
   // late Future<List<dynamic>> fetch;
   Blocks? selectedBlock; // Define selectedBlock as nullable
   late int selectedBlockID; // To fetch the units of the selected block
@@ -206,6 +201,7 @@ class _MeterScreenState extends State<MeterScreen> {
           selectedBlockID = selectedBlock!.blockId;
           // call method to fetch units when block is clicked
           futureUnits = fetchUnits();
+          futureMeterReading = fetchMeterReading();
 
           // fetch = request();
         });
@@ -214,6 +210,7 @@ class _MeterScreenState extends State<MeterScreen> {
     // fetch = request();
     futureMeters = fetchMeters();
     futureUnits = fetchUnits();
+    futureMeterReading = fetchMeterReading();
   }
 
   // Fetching the blocks from the API endpoint
@@ -302,6 +299,25 @@ class _MeterScreenState extends State<MeterScreen> {
     }
   }
 
+  Future<List<MeterReading>> fetchMeterReading() async {
+    DateTime now = DateTime.now();
+    int year = now.year;
+    int month = now.month;
+    final response = await http.get(Uri.parse(
+        'https://imiziapi.codeflux.co.za/api/MeterReading/search/$year/$month/$selectedBlockID'));
+    if (response.statusCode == 200) {
+      List<dynamic> jsonResponse = json.decode(response.body);
+      List<MeterReading> meterReadings = jsonResponse
+          .map((meterReading) => MeterReading.fromJson(meterReading))
+          .toList();
+
+      meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+      return meterReadings;
+    } else {
+      throw Exception('Could not fetch readings for ${_prop.name}');
+    }
+  }
+
   // Pagination Funtionality:
   int currentPage = 0; //Keeping track of current Page
   int itemsPerPage = 6; //Number of items to Display per page
@@ -344,7 +360,25 @@ class _MeterScreenState extends State<MeterScreen> {
     }
   }
 
-  // Displaying capped List of TextFields
+  // List of everything capped
+  List<MeterReading> getMeterReadingForCurrentPage(
+      List<MeterReading> meterReadings) {
+    final startIndex = currentPage * itemsPerPage;
+
+    // Ensure startIndex is within a valid range
+    if (startIndex >= meterReadings.length) {
+      return [];
+    }
+
+    final endIndex = startIndex + itemsPerPage;
+
+    // Ensure endIndex doesn't exceed the total number of items
+    if (endIndex > meterReadings.length) {
+      return meterReadings.sublist(startIndex);
+    } else {
+      return meterReadings.sublist(startIndex, endIndex);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -466,7 +500,7 @@ class _MeterScreenState extends State<MeterScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.only(
-                    left: 31.0, top: 16.0, bottom: 6.0, right: 18.0),
+                    left: 26.0, top: 16.0, bottom: 6.0, right: 18.0),
                 child: Container(
                   width: MediaQuery.of(context).size.width,
                   height: MediaQuery.of(context).size.height * 0.6,
@@ -481,7 +515,7 @@ class _MeterScreenState extends State<MeterScreen> {
                       controller: _firstController,
                       child: Wrap(direction: Axis.horizontal, children: [
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.8 / 5,
+                          width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.blue,
                           child: Column(
@@ -490,7 +524,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
                                 child: FutureBuilder(
-                                  future: futureUnits,
+                                  future: futureMeterReading,
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState ==
                                         ConnectionState.waiting) {
@@ -504,21 +538,22 @@ class _MeterScreenState extends State<MeterScreen> {
                                           child: Text('${snapshot.error}'));
                                     } else {
                                       // List<dynamic> data = snapshot.data!
-                                      List<Units> units = snapshot.data!;
+                                      List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
-                                          getUnitsForCurrentPage(units);
+                                          getMeterReadingForCurrentPage(units);
 
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
                                               left: 15.0,
-                                              top: 15.0,
+                                              top: 10.0,
                                               bottom: 25.0,
                                               right: 10.0),
                                           itemBuilder:
                                               (BuildContext context, index) {
-                                            Units unit = unitsToDisplay[index];
+                                            MeterReading unit =
+                                                unitsToDisplay[index];
                                             return Text(
                                               'Unit ${unit.unitNumber}',
                                               style:
@@ -538,7 +573,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.8 / 5,
+                          width: MediaQuery.of(context).size.width * 0.82 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.amber,
                           child: Column(
@@ -547,7 +582,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
                                 child: FutureBuilder(
-                                    future: futureMeters,
+                                    future: futureMeterReading,
                                     builder: (context, snapshot) {
                                       if (snapshot.connectionState ==
                                           ConnectionState.waiting) {
@@ -559,9 +594,11 @@ class _MeterScreenState extends State<MeterScreen> {
                                         return Center(
                                             child: Text('${snapshot.error}'));
                                       } else {
-                                        List<Meters> meters = snapshot.data!;
+                                        List<MeterReading> meters =
+                                            snapshot.data!;
                                         final metersToDisplay =
-                                            getMetersForCurrentPage(meters);
+                                            getMeterReadingForCurrentPage(
+                                                meters);
                                         return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -573,7 +610,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                           itemCount: metersToDisplay.length,
                                           itemBuilder:
                                               (BuildContext context, index) {
-                                            Meters meter =
+                                            MeterReading meter =
                                                 metersToDisplay[index];
                                             return Text('${meter.meterNumber}');
                                           },
@@ -600,7 +637,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
                                 child: FutureBuilder(
-                                  future: futureUnits,
+                                  future: futureMeterReading,
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState ==
                                         ConnectionState.waiting) {
@@ -612,16 +649,16 @@ class _MeterScreenState extends State<MeterScreen> {
                                       return Center(
                                           child: Text('${snapshot.error}'));
                                     } else {
-                                      List<Units> units = snapshot.data!;
+                                      List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
-                                          getUnitsForCurrentPage(units);
+                                          getMeterReadingForCurrentPage(units);
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
                                               right: 8.0,
                                               left: 8.0,
-                                              top: 8.0,
+                                              top: 9.0,
                                               bottom: 16.0),
                                           itemBuilder: (BuildContext context,
                                               int index) {
@@ -668,7 +705,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.8 / 5,
+                          width: MediaQuery.of(context).size.width * 0.82 / 5,
                           height: MediaQuery.of(context).size.height,
                           color: Colors.orange,
                           child: Column(
@@ -676,6 +713,50 @@ class _MeterScreenState extends State<MeterScreen> {
                               Container(
                                 width: double.infinity,
                                 height: MediaQuery.of(context).size.height,
+                                child: FutureBuilder(
+                                  future: futureMeterReading,
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Center(
+                                          child: CircularProgressIndicator(
+                                              color: Color.fromARGB(
+                                                  255, 166, 160, 55)));
+                                    } else if (snapshot.hasError) {
+                                      return Center(
+                                          child: Text('${snapshot.error}'));
+                                    } else {
+                                      List<MeterReading> previous =
+                                          snapshot.data!;
+                                      final previousToDisplay =
+                                          getMeterReadingForCurrentPage(
+                                              previous);
+                                      return ListView.separated(
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.only(
+                                              left: 15.0,
+                                              top: 10.0,
+                                              bottom: 25.0,
+                                              right: 10.0),
+                                          itemBuilder: (BuildContext context,
+                                              int index) {
+                                            MeterReading prev =
+                                                previousToDisplay[index];
+                                            return Text(
+                                              '${prev.previous}',
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                            );
+                                          },
+                                          separatorBuilder:
+                                              (BuildContext context,
+                                                      int index) =>
+                                                  const SizedBox(height: 34.0),
+                                          itemCount: previousToDisplay.length);
+                                    }
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -688,6 +769,49 @@ class _MeterScreenState extends State<MeterScreen> {
                             Container(
                               width: double.infinity,
                               height: MediaQuery.of(context).size.height,
+                              child: FutureBuilder(
+                                  future: futureMeterReading,
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Center(
+                                          child: CircularProgressIndicator(
+                                              color: Color.fromARGB(
+                                                  255, 166, 160, 55)));
+                                    } else if (snapshot.hasError) {
+                                      return Center(
+                                          child: Text('${snapshot.error}'));
+                                    } else {
+                                      List<MeterReading> average =
+                                          snapshot.data!;
+                                      final averageToDisplay =
+                                          getMeterReadingForCurrentPage(
+                                              average);
+                                      return ListView.separated(
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          padding: const EdgeInsets.only(
+                                              left: 15.0,
+                                              top: 10.0,
+                                              bottom: 25.0,
+                                              right: 10.0),
+                                          itemBuilder: (BuildContext context,
+                                              int index) {
+                                            MeterReading ave =
+                                                averageToDisplay[index];
+                                            return Text(
+                                              '${ave.average}',
+                                              style:
+                                                  const TextStyle(fontSize: 16),
+                                            );
+                                          },
+                                          separatorBuilder:
+                                              (BuildContext context,
+                                                      int index) =>
+                                                  const SizedBox(height: 34.0),
+                                          itemCount: averageToDisplay.length);
+                                    }
+                                  }),
                             ),
                           ]),
                         ),
