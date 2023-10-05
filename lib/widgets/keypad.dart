@@ -23,22 +23,23 @@ class _CustomKeypadState extends State<CustomKeypad> {
     return Center(
       // Center the keypad
       child: Padding(
-        padding: EdgeInsets.all(20.0), // Add padding around the keypad
+        padding: EdgeInsets.all(15.0), // Add padding around the keypad
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: Colors.black),
+            color: Colors.white,
           ),
           width: 260,
-          height: MediaQuery.of(context).size.height,
+          height: MediaQuery.of(context).size.height * 0.7,
           child: Padding(
-            padding: EdgeInsets.all(
-                10.0), // Add padding between the container and buttons
+            padding: const EdgeInsets.all(10.0), // Add padding around buttons
             child: GridView.builder(
               itemCount: keypadButtons.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                crossAxisSpacing: 10.0, // Add spacing between buttons
-                mainAxisSpacing: 10.0, // Add spacing between buttons
+                crossAxisSpacing: 12.0, // Add spacing between buttons
+                mainAxisSpacing: 12.0, // Add spacing between rows
+                childAspectRatio: 1.0, // Ensure buttons have equal height
               ),
               itemBuilder: (context, index) {
                 return GestureDetector(
@@ -48,21 +49,25 @@ class _CustomKeypadState extends State<CustomKeypad> {
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.black),
+                      color: Color.fromARGB(255, 166, 160, 55),
                     ),
                     alignment: Alignment.center,
                     child: (keypadButtons[index] == 'Submit')
-                        ? SizedBox(
+                        ? Container(
+                            color: Color.fromARGB(255, 207, 119, 40),
                             // Make the Submit button span the width of the container
                             width: double.infinity,
                             child: Text(
                               keypadButtons[index],
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 24.0),
+                              style: const TextStyle(
+                                  fontSize: 24.0, color: Colors.white),
                             ),
                           )
                         : Text(
                             keypadButtons[index],
-                            style: TextStyle(fontSize: 24.0),
+                            style:
+                                TextStyle(fontSize: 24.0, color: Colors.white),
                           ),
                   ),
                 );
