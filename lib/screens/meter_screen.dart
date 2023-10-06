@@ -38,81 +38,6 @@ class Blocks {
   }
 }
 
-// Data Model for List of units
-class Units {
-  final int unitId;
-  final int blockId;
-  final int unitNumber;
-  final int propertyId;
-  final String payPropUnitId;
-  final String createDate;
-  final bool active;
-  final String blockNumber;
-  final String blockDescription;
-  final String name;
-
-  Units({
-    required this.unitId,
-    required this.blockId,
-    required this.unitNumber,
-    required this.propertyId,
-    required this.payPropUnitId,
-    required this.createDate,
-    required this.active,
-    required this.blockNumber,
-    required this.blockDescription,
-    required this.name,
-  });
-
-  factory Units.fromJson(Map<String, dynamic> json) {
-    return Units(
-        unitId: json['unitId'],
-        blockId: json['blockId'],
-        unitNumber: json['unitNumber'],
-        propertyId: json['propertyId'],
-        payPropUnitId: json['payPropUnitId'],
-        createDate: json['createDate'],
-        active: json['active'],
-        blockNumber: json['blockNumber'],
-        blockDescription: json['blockDescription'],
-        name: json['name']);
-  }
-}
-
-// Data Model for Meters
-class Meters {
-  final int meterId;
-  final int unitId;
-  final String meterNumber;
-  final String createDate;
-  final bool active;
-  final String meterType;
-  final int blockId;
-  final int propertyId;
-
-  Meters(
-      {required this.meterId,
-      required this.unitId,
-      required this.meterNumber,
-      required this.createDate,
-      required this.active,
-      required this.meterType,
-      required this.blockId,
-      required this.propertyId});
-
-  factory Meters.fromJson(Map<String, dynamic> json) {
-    return Meters(
-        meterId: json['meterId'],
-        unitId: json['unitId'],
-        meterNumber: json['meterNumber'],
-        createDate: json['createDate'],
-        active: json['active'],
-        meterType: json['meterType'],
-        blockId: json['blockId'],
-        propertyId: json['propertyId']);
-  }
-}
-
 // Getting Everything for the MeterScreen
 // Required params for enpoint are: year, month, selectedBlockId
 class MeterReading {
@@ -174,8 +99,8 @@ class MeterScreen extends StatefulWidget {
 class _MeterScreenState extends State<MeterScreen> {
   late Property _prop;
   late Future<List<Blocks>> futureBlocks;
-  late Future<List<Units>> futureUnits;
-  late Future<List<Meters>> futureMeters;
+  // late Future<List<Units>> futureUnits;
+  // late Future<List<Meters>> futureMeters;
   late Future<List<MeterReading>> futureMeterReading;
   // late Future<List<dynamic>> fetch;
   Blocks? selectedBlock; // Define selectedBlock as nullable
@@ -186,6 +111,9 @@ class _MeterScreenState extends State<MeterScreen> {
 
   //Using DIO package to get units
   final dio = Dio();
+
+  // Define a list of controllers outside the FutureBuilder
+  List<TextEditingController> textControllers = [];
 
   @override
   void initState() {
@@ -201,16 +129,10 @@ class _MeterScreenState extends State<MeterScreen> {
           selectedBlock = blocks.first;
           selectedBlockID = selectedBlock!.blockId;
           // call method to fetch units when block is clicked
-          futureUnits = fetchUnits();
           futureMeterReading = fetchMeterReading();
-
-          // fetch = request();
         });
       }
     });
-    // fetch = request();
-    futureMeters = fetchMeters();
-    futureUnits = fetchUnits();
     futureMeterReading = fetchMeterReading();
   }
 
@@ -233,7 +155,6 @@ class _MeterScreenState extends State<MeterScreen> {
   }
 
   //Trying Units another way
-
   // Future<List<dynamic>> request() async {
   //   var options = Options();
   //   options.contentType = 'application/json';
@@ -256,49 +177,6 @@ class _MeterScreenState extends State<MeterScreen> {
   //   }
   // }
 
-  //Bring List of Units when a block is pressed
-  Future<List<Units>> fetchUnits() async {
-    var options = Options();
-    options.contentType = 'application/json';
-    String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
-    Map<String, int> qParams = {
-      'blockId': selectedBlockID,
-      'propertyId': _prop.propertyId
-    };
-    Response response =
-        await dio.get(url, options: options, queryParameters: qParams);
-    if (response.statusCode == 200) {
-      // Fix decoding here
-      List<dynamic> jsonResponse = response.data;
-      List<Units> units =
-          jsonResponse.map((unit) => Units.fromJson(unit)).toList();
-
-      // Sorting the units based on Unit Number
-      units.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
-      return units;
-    } else {
-      throw Exception(
-          'Could not get the List of Units from the selected Block');
-    }
-  }
-
-  // Fetching Meters for Units
-  Future<List<Meters>> fetchMeters() async {
-    final response =
-        await http.get(Uri.parse('https://imiziapi.codeflux.co.za/api/Meter'));
-    // pass {propertyId}/{blockId}/{unitId} to get specific Meters
-
-    if (response.statusCode == 200) {
-      List<dynamic> jsonResponse = json.decode(response.body);
-      List<Meters> meters =
-          jsonResponse.map((unit) => Meters.fromJson(unit)).toList();
-      // Find a way to sort Meters by Unit Number
-      return meters;
-    } else {
-      throw Exception('Could not get List of Meters');
-    }
-  }
-
   Future<List<MeterReading>> fetchMeterReading() async {
     DateTime now = DateTime.now();
     int year = now.year;
@@ -311,7 +189,6 @@ class _MeterScreenState extends State<MeterScreen> {
       List<MeterReading> meterReadings = jsonResponse
           .map((meterReading) => MeterReading.fromJson(meterReading))
           .toList();
-
       meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
       return meterReadings;
     } else {
@@ -322,57 +199,15 @@ class _MeterScreenState extends State<MeterScreen> {
   // Pagination Funtionality:
   int currentPage = 0; //Keeping track of current Page
   int itemsPerPage = 6; //Number of items to Display per page
-
-  // Displaying capped List of Units
-  List<Units> getUnitsForCurrentPage(List<Units> allUnits) {
-    final startIndex = currentPage * itemsPerPage;
-
-    // Ensure startIndex is within a valid range
-    if (startIndex >= allUnits.length) {
-      return [];
-    }
-
-    final endIndex = startIndex + itemsPerPage;
-
-    // Ensure endIndex doesn't exceed the total number of items
-    if (endIndex > allUnits.length) {
-      return allUnits.sublist(startIndex);
-    } else {
-      return allUnits.sublist(startIndex, endIndex);
-    }
-  }
-
-  //Displaying capped List of Meters
-  List<Meters> getMetersForCurrentPage(List<Meters> allMeters) {
-    final startIndex = currentPage * itemsPerPage;
-
-    // Ensure startIndex is within a valid range
-    if (startIndex >= allMeters.length) {
-      return [];
-    }
-
-    final endIndex = startIndex + itemsPerPage;
-
-    // Ensure endIndex doesn't exceed the total number of items
-    if (endIndex > allMeters.length) {
-      return allMeters.sublist(startIndex);
-    } else {
-      return allMeters.sublist(startIndex, endIndex);
-    }
-  }
-
   // List of everything capped
   List<MeterReading> getMeterReadingForCurrentPage(
       List<MeterReading> meterReadings) {
     final startIndex = currentPage * itemsPerPage;
-
     // Ensure startIndex is within a valid range
     if (startIndex >= meterReadings.length) {
       return [];
     }
-
     final endIndex = startIndex + itemsPerPage;
-
     // Ensure endIndex doesn't exceed the total number of items
     if (endIndex > meterReadings.length) {
       return meterReadings.sublist(startIndex);
@@ -381,18 +216,9 @@ class _MeterScreenState extends State<MeterScreen> {
     }
   }
 
-  // Handling the Text in the custom Keypad
-  TextEditingController _selectedTextFieldController = TextEditingController();
-  //updating the selected text field
-  void updateSelectedTextField(TextEditingController controller) {
-    setState(() {
-      _selectedTextFieldController = controller;
-    });
-  }
-
   //Function to show the CustomKeypad when a Textfield input is tapped
-  void showCustomKeypad(
-      BuildContext context, TextEditingController controller) {
+  void showCustomKeypad(BuildContext context, TextEditingController controller,
+      int unitPrevious, Function(String) onSubmitted) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -412,20 +238,21 @@ class _MeterScreenState extends State<MeterScreen> {
                 // Handle submit button press, to post readings to API
                 String enteredText = controller.text;
                 print('Entered Text: $enteredText');
+                // Call the onSubmitted callback and pass the entered text
+                onSubmitted(enteredText);
                 // Close the keypad widget
                 Navigator.of(context).pop();
               } else {
                 controller.text += buttonText;
               }
+              // Call the callback function to update the controller's value
+              // onSubmitted(controller.text);
             },
           ),
         );
       },
     );
   }
-
-  // Define a list of controllers outside the FutureBuilder
-  List<TextEditingController> textControllers = [];
 
   @override
   Widget build(BuildContext context) {
@@ -495,8 +322,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                       selectedBlockID = selectedBlock!
                                           .blockId; // BlockId to be able to select units
                                       // call method to fetch units when block is clicked
-                                      // fetch = request();
-                                      futureUnits = fetchUnits();
+                                      futureMeterReading = fetchMeterReading();
                                     });
                                   },
                                   value: selectedBlock, // Set initial value
@@ -551,8 +377,7 @@ class _MeterScreenState extends State<MeterScreen> {
                 child: Container(
                   width: MediaQuery.of(context).size.width,
                   height: MediaQuery.of(context).size.height * 0.6,
-                  color: Colors.purple,
-                  // Add code here:
+                  // color: Colors.purple,
                   child: RawScrollbar(
                     thumbColor: Color.fromARGB(255, 166, 160, 55),
                     radius: Radius.zero,
@@ -564,7 +389,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         Container(
                           width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
-                          color: Colors.blue,
+                          // color: Colors.blue,
                           child: Column(
                             children: <Widget>[
                               Container(
@@ -588,11 +413,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                       List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
                                           getMeterReadingForCurrentPage(units);
-                                      // Populate the list of controllers based on the number of units
-                                      textControllers = List.generate(
-                                        unitsToDisplay.length,
-                                        (index) => TextEditingController(),
-                                      );
+
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -626,7 +447,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         Container(
                           width: MediaQuery.of(context).size.width * 0.85 / 5,
                           height: MediaQuery.of(context).size.height,
-                          color: Colors.amber,
+                          // color: Colors.amber,
                           child: Column(
                             children: <Widget>[
                               Container(
@@ -685,7 +506,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                   (MediaQuery.of(context).size.width) * 0.4) /
                               5,
                           height: MediaQuery.of(context).size.height,
-                          color: Colors.green,
+                          // color: Colors.green,
                           child: Column(
                             children: <Widget>[
                               Container(
@@ -707,6 +528,11 @@ class _MeterScreenState extends State<MeterScreen> {
                                       List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
                                           getMeterReadingForCurrentPage(units);
+                                      // Populate the list of controllers based on the number of units
+                                      for (int i = 0; i < units.length; i++) {
+                                        textControllers
+                                            .add(TextEditingController());
+                                      }
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
@@ -717,39 +543,81 @@ class _MeterScreenState extends State<MeterScreen> {
                                               bottom: 16.0),
                                           itemBuilder: (BuildContext context,
                                               int index) {
-                                            // Units unit = unitsToDisplay[index];
+                                            MeterReading unit =
+                                                unitsToDisplay[index];
+                                            ValueNotifier<String>
+                                                textValueNotifier =
+                                                ValueNotifier<String>("");
+                                            return ValueListenableBuilder<
+                                                String>(
+                                              valueListenable:
+                                                  textValueNotifier,
+                                              builder: (context, text, child) {
+                                                Color textColor = text.isEmpty
+                                                    ? Colors.black
+                                                    : int.tryParse(text)! >
+                                                            (unit.previous +
+                                                                unit.previous *
+                                                                    0.25)
+                                                        ? Colors.red
+                                                        : Colors.black;
 
-                                            return Container(
-                                              child: CupertinoTextField(
-                                                onTap: () {
-                                                  showCustomKeypad(context,
-                                                      textControllers[index]);
-                                                },
-                                                controller:
-                                                    textControllers[index],
-                                                decoration: BoxDecoration(
-                                                    color: theme
-                                                        .colorScheme.background,
-                                                    border: Border.all(
-                                                        color: Colors.black)),
-                                                cursorColor:
-                                                    theme.colorScheme.primary,
-                                                placeholder:
-                                                    "Enter Meter Reading",
-                                                style: TextStyle(
-                                                    color: theme.colorScheme
-                                                        .onBackground,
-                                                    fontSize: 14),
-                                                padding: const EdgeInsets.only(
-                                                    top: 8,
-                                                    bottom: 8,
-                                                    left: 8,
-                                                    right: 4),
-                                                placeholderStyle: TextStyle(
-                                                    color: theme.colorScheme
-                                                        .onBackground
-                                                        .withAlpha(160)),
-                                              ),
+                                                return Container(
+                                                  child: CupertinoTextField(
+                                                    onTap: () {
+                                                      showCustomKeypad(
+                                                          context,
+                                                          textControllers[
+                                                              index],
+                                                          unit.previous, (String
+                                                              updatedValue) {
+                                                        // The updatedValue parameter contains the latest value from the controller
+                                                        // You can use it as needed
+                                                        textValueNotifier
+                                                                .value =
+                                                            updatedValue;
+                                                        print(
+                                                            'Updated Value: $updatedValue');
+
+                                                        textControllers[index]
+                                                                .value =
+                                                            TextEditingValue(
+                                                          text: updatedValue,
+                                                          selection:
+                                                              textControllers[
+                                                                      index]
+                                                                  .selection,
+                                                        );
+                                                      });
+                                                    },
+                                                    controller:
+                                                        textControllers[index],
+                                                    decoration: BoxDecoration(
+                                                        color: theme.colorScheme
+                                                            .background,
+                                                        border: Border.all(
+                                                            color:
+                                                                Colors.black)),
+                                                    cursorColor: theme
+                                                        .colorScheme.primary,
+                                                    placeholder:
+                                                        "Enter Meter Reading",
+                                                    style: TextStyle(
+                                                        color: textColor,
+                                                        fontSize: 14),
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            top: 8,
+                                                            bottom: 8,
+                                                            left: 8,
+                                                            right: 4),
+                                                    placeholderStyle: TextStyle(
+                                                        color: theme.colorScheme
+                                                            .onBackground
+                                                            .withAlpha(160)),
+                                                  ),
+                                                );
+                                              },
                                             );
                                           },
                                           separatorBuilder:
@@ -769,7 +637,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         Container(
                           width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
-                          color: Colors.orange,
+                          // color: Colors.orange,
                           child: Column(
                             children: <Widget>[
                               Container(
@@ -826,7 +694,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         Container(
                           width: MediaQuery.of(context).size.width * 0.80 / 5,
                           height: MediaQuery.of(context).size.height,
-                          color: Colors.red,
+                          // color: Colors.red,
                           child: Column(children: <Widget>[
                             Container(
                               width: double.infinity,
@@ -910,7 +778,7 @@ class _MeterScreenState extends State<MeterScreen> {
                     ),
                     // SizedBox(width: 16), // Add spacing between buttons
 
-                    Spacer(), // Spacer to center the 'Next' and 'Previous' buttons
+                    const Spacer(), // Spacer to center the 'Next' and 'Previous' buttons
                     FxButton.medium(
                       elevation: 1,
                       borderRadiusAll: 0.0,
@@ -930,7 +798,8 @@ class _MeterScreenState extends State<MeterScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 16), // Add some spacing between the buttons
+                    const SizedBox(
+                        width: 16), // Add some spacing between the buttons
                     FxButton.medium(
                       elevation: 1,
                       borderRadiusAll: 0.0,
@@ -955,7 +824,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         ),
                       ),
                     ),
-                    Spacer(),
+                    const Spacer(),
                     FxButton.medium(
                       elevation: 1,
                       borderRadiusAll: 0.0,
@@ -963,6 +832,7 @@ class _MeterScreenState extends State<MeterScreen> {
                       onPressed: () {
                         // Logic for 'Submit' button
                         // Implement the submission logic here
+                        print(textControllers);
                       },
                       child: const Text(
                         'Submit',

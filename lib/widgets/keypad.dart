@@ -93,6 +93,10 @@ class _CustomKeypadState extends State<CustomKeypad> {
       // Handle submit button press, e.g., save the input text
       String enteredText = _textController.text;
       print('Entered Text: $enteredText');
+
+      // Call the callback to update the CupertinoTextField value
+      widget.onKeypadButtonPressed(enteredText);
+
       // Close the keypad widget
       Navigator.of(context).pop();
     } else {
