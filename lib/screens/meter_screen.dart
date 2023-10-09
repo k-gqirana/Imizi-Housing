@@ -409,7 +409,6 @@ class _MeterScreenState extends State<MeterScreen> {
                                       return Center(
                                           child: Text('${snapshot.error}'));
                                     } else {
-                                      // List<dynamic> data = snapshot.data!
                                       List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
                                           getMeterReadingForCurrentPage(units);
@@ -564,6 +563,7 @@ class _MeterScreenState extends State<MeterScreen> {
 
                                                 return Container(
                                                   child: CupertinoTextField(
+                                                    readOnly: true,
                                                     onTap: () {
                                                       showCustomKeypad(
                                                           context,
@@ -829,10 +829,43 @@ class _MeterScreenState extends State<MeterScreen> {
                       elevation: 1,
                       borderRadiusAll: 0.0,
                       backgroundColor: const Color.fromARGB(255, 207, 119, 40),
-                      onPressed: () {
+                      onPressed: () async {
                         // Logic for 'Submit' button
                         // Implement the submission logic here
-                        print(textControllers);
+                        String url =
+                            'https://imiziapi.codeflux.co.za/api/MeterReading/update-mobile-readings';
+
+                        List<Map<String, dynamic>> jsonResponse = [];
+                        final List<MeterReading> readings =
+                            await fetchMeterReading();
+
+                        for (int i = 0; i < readings.length; i++) {
+                          MeterReading reading = readings[i];
+                          jsonResponse.add({
+                            'meterId': reading.meterId,
+                            'reading':
+                                int.tryParse(textControllers[i].text) ?? 0
+                          });
+                        }
+
+                        print(jsonResponse);
+
+                        // // Post method
+                        try {
+                          final response = await http.post(Uri.parse(url),
+                              headers: <String, String>{
+                                'Content-Type': 'application/json'
+                              },
+                              body: jsonEncode(jsonResponse));
+                          if (response.statusCode == 200) {
+                            print('Response successful');
+                          } else {
+                            print('Error code: ${response.statusCode}');
+                            print('Error message: ${response.body}');
+                          }
+                        } catch (e) {
+                          print('Post Error: ${e.runtimeType}');
+                        }
                       },
                       child: const Text(
                         'Submit',
