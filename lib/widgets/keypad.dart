@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class CustomKeypad extends StatefulWidget {
   final Function(String) onKeypadButtonPressed;
   CustomKeypad({required this.onKeypadButtonPressed});
 
   @override
+  // ignore: library_private_types_in_public_api
   _CustomKeypadState createState() => _CustomKeypadState();
 }
 
@@ -15,64 +17,94 @@ class _CustomKeypadState extends State<CustomKeypad> {
     '4', '5', '6',
     '7', '8', '9',
     'C', '0', '<', // 'C' for clear, '<' for back
-    'Submit'
+    // 'Submit'
   ];
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      // Center the keypad
       child: Padding(
-        padding: EdgeInsets.all(15.0), // Add padding around the keypad
+        padding: const EdgeInsets.all(15.0),
         child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.black),
+          decoration: const BoxDecoration(
+            // border: Border.all(color: Colors.black),
             color: Colors.white,
           ),
           width: 260,
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Padding(
-            padding: const EdgeInsets.all(10.0), // Add padding around buttons
-            child: GridView.builder(
-              itemCount: keypadButtons.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12.0, // Add spacing between buttons
-                mainAxisSpacing: 12.0, // Add spacing between rows
-                childAspectRatio: 1.0, // Ensure buttons have equal height
-              ),
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    widget.onKeypadButtonPressed(keypadButtons[index]);
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black),
-                      color: Color.fromARGB(255, 166, 160, 55),
-                    ),
-                    alignment: Alignment.center,
-                    child: (keypadButtons[index] == 'Submit')
-                        ? Container(
-                            color: Color.fromARGB(255, 207, 119, 40),
-                            // Make the Submit button span the width of the container
-                            width: double.infinity,
-                            child: Text(
-                              keypadButtons[index],
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  fontSize: 24.0, color: Colors.white),
-                            ),
-                          )
-                        : Text(
-                            keypadButtons[index],
-                            style:
-                                TextStyle(fontSize: 24.0, color: Colors.white),
-                          ),
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: CupertinoTextField(
+                  controller: _textController,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black),
                   ),
-                );
-              },
-            ),
+                  cursorColor: Colors.black,
+                  style: TextStyle(fontSize: 16),
+                  padding: const EdgeInsets.only(
+                      top: 8, bottom: 8, left: 8, right: 4),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: keypadButtons.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 14.0,
+                    mainAxisSpacing: 14.0,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () {
+                        onKeypadButtonPressed(keypadButtons[index]);
+                      },
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          // border: Border.all(color: Colors.black),
+                          color: Color.fromARGB(255, 166, 160, 55),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          keypadButtons[index],
+                          style: const TextStyle(
+                              fontSize: 34.0, color: Colors.white),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10.0, vertical: 7.0),
+                child: Container(
+                  height: 45.0,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      onKeypadButtonPressed('Submit');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      primary: Color.fromARGB(255, 207, 119, 40),
+                      shape: const RoundedRectangleBorder(),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Submit',
+                        style: TextStyle(
+                          fontSize: 24.0,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -112,3 +144,24 @@ class _CustomKeypadState extends State<CustomKeypad> {
     super.dispose();
   }
 }
+
+
+// void main() {
+//   runApp(MaterialApp(
+//     home: Scaffold(
+//       appBar: AppBar(
+//         title: Text('Custom Keypad Example'),
+//       ),
+//       body: CustomKeypad(
+//         onKeypadButtonPressed: (text) {
+//           print('Text entered: $text');
+//         },
+//       ),
+//     ),
+//   ));
+// }
+
+
+
+
+

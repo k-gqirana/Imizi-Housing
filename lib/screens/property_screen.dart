@@ -1,33 +1,50 @@
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutx/flutx.dart';
 import 'package:imiziappthemed/screens/meter_screen.dart';
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
-// Class for the Data Model
-//check if we need propertyImage and imageFile attrributes
 class Property {
   final int propertyId;
   final String name;
   final String description;
   final String createDate;
-  final bool active;
 
-  Property(
-      {required this.propertyId,
-      required this.name,
-      required this.description,
-      required this.createDate,
-      required this.active});
+  Property({
+    required this.propertyId,
+    required this.name,
+    required this.description,
+    required this.createDate,
+  });
 
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-        propertyId: json['propertyId'],
-        name: json['name'],
-        description: json['description'],
-        createDate: json['createDate'],
-        active: json['active']);
+      propertyId: json['propertyId'],
+      name: json['name'],
+      description: json['description'],
+      createDate: json['createDate'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'propertyId': propertyId,
+      'name': name,
+      'description': description,
+      'createDate': createDate,
+    };
+  }
+
+  factory Property.fromMap(Map<String, dynamic> map) {
+    return Property(
+      propertyId: map['propertyId'],
+      name: map['name'],
+      description: map['description'],
+      createDate: map['createDate'],
+    );
   }
 }
 
@@ -43,31 +60,102 @@ class _PropertyScreenState extends State<PropertyScreen> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
-    //When Sccreen loads get the Properties
     futureProperties = fetchProperties();
   }
 
-  // Method to get Properties from API endpoint
   Future<List<Property>> fetchProperties() async {
-    final response = await http
-        .get(Uri.parse('https://imiziapi.codeflux.co.za/api/Property/'));
+    try {
+      final response = await http
+          .get(Uri.parse('https://imiziapi.codeflux.co.za/api/Property/'));
 
-    if (response.statusCode == 200) {
-      List<dynamic> jsonResponse = json.decode(response.body);
-      List<Property> properties =
-          jsonResponse.map((property) => Property.fromJson(property)).toList();
+      if (response.statusCode == 200) {
+        bool tableExists = await doesPropertyTableExist();
 
-      // Sorting the List of Properties by name
-      properties.sort((a, b) => a.name.compareTo(b.name));
-      return properties;
-    } else {
-      throw Exception('Failed Loading Properties');
+        if (tableExists) {
+          await deleteAllProperties();
+          await insertPropertiesFromAPI(response.body);
+        } else {
+          await createPropertyTable();
+          await insertPropertiesFromAPI(response.body);
+        }
+
+        List<Property> properties = await getPropertiesFromDB();
+        properties.sort((a, b) => a.name.compareTo(b.name));
+        return properties;
+      } else {
+        throw Exception('Failed Loading Properties');
+      }
+    } catch (e) {
+      // No internet connection
+      bool tableExists = await doesPropertyTableExist();
+      if (tableExists) {
+        List<Property> properties = await getPropertiesFromDB();
+        properties.sort((a, b) => a.name.compareTo(b.name));
+        return properties;
+      } else {
+        throw Exception('Failed Loading Properties');
+      }
     }
   }
 
-  // Handling Navigation to the next screen
+  Future<void> createPropertyTable() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'property_database.db'),
+      onCreate: (db, version) {
+        return db.execute(
+          'CREATE TABLE properties(id INTEGER PRIMARY KEY, propertyId INTEGER, name TEXT, description TEXT, createDate TEXT)',
+        );
+      },
+      version: 1,
+    );
+    await database.close();
+  }
+
+  Future<bool> doesPropertyTableExist() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'property_database.db'),
+    );
+    final tables = await database
+        .query('sqlite_master', where: 'name = ?', whereArgs: ['properties']);
+    await database.close();
+    return tables.isNotEmpty;
+  }
+
+  Future<void> deleteAllProperties() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'property_database.db'),
+    );
+    await database.delete('properties');
+    await database.close();
+  }
+
+  Future<void> insertPropertiesFromAPI(String responseBody) async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'property_database.db'),
+    );
+    final List<dynamic> jsonResponse = json.decode(responseBody);
+    for (var property in jsonResponse) {
+      await database.insert(
+        'properties',
+        Property.fromJson(property).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await database.close();
+  }
+
+  Future<List<Property>> getPropertiesFromDB() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'property_database.db'),
+    );
+    final List<Map<String, dynamic>> maps = await database.query('properties');
+    await database.close();
+    return List.generate(maps.length, (i) {
+      return Property.fromMap(maps[i]);
+    });
+  }
+
   void navigateToMeterScreen(BuildContext context, Property property) {
     Navigator.of(context).push(
       MaterialPageRoute(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+// import 'dart:html';
 import 'package:flutter/material.dart';
 import '../screens/property_screen.dart';
 import 'package:http/http.dart' as http;
@@ -6,34 +7,46 @@ import 'package:flutx/flutx.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import '../widgets/keypad.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 
 //Data Model for Blocks associated with each property
 class Blocks {
   final int blockId;
   final int propertyId;
   final String blockNumber;
-  final bool blockAcitve;
+  // final bool blockAcitve;
   final String propertyName;
-  final bool propertyActive;
+  // final bool propertyActive;
   final String description;
 
   Blocks(
       {required this.blockId,
       required this.propertyId,
       required this.blockNumber,
-      required this.blockAcitve,
+      // required this.blockAcitve,
       required this.propertyName,
-      required this.propertyActive,
+      // required this.propertyActive,
       required this.description});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'blockId': blockId,
+      'propertyId': propertyId,
+      'blockNumber': blockNumber,
+      'propertyName': propertyName,
+      'description': description
+    };
+  }
 
   factory Blocks.fromJson(Map<String, dynamic> json) {
     return Blocks(
         blockId: json['blockId'],
         propertyId: json['propertyId'],
         blockNumber: json['blockNumber'],
-        blockAcitve: json['blockActive'],
+        // blockAcitve: json['blockActive'],
         propertyName: json['propertyName'],
-        propertyActive: json['propertyActive'],
+        // propertyActive: json['propertyActive'],
         description: json['description']);
   }
 }
@@ -69,6 +82,24 @@ class MeterReading {
       required this.average,
       required this.month,
       required this.year});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'propertyId': propertyId,
+      'name': name,
+      'blockId': blockId,
+      'blockNumber': blockNumber,
+      'unitId': unitId,
+      'meterId': meterId,
+      'meterNumber': meterNumber,
+      'reading': reading,
+      'previous': previous,
+      'unitNumber': unitNumber,
+      'average': average,
+      'month': month,
+      'year': year
+    };
+  }
 
   factory MeterReading.fromJson(Map<String, dynamic> json) {
     return MeterReading(
@@ -138,62 +169,210 @@ class _MeterScreenState extends State<MeterScreen> {
 
   // Fetching the blocks from the API endpoint
   Future<List<Blocks>> fetchBlocks() async {
-    final response = await http.get(Uri.parse(
-        'https://imiziapi.codeflux.co.za/api/Block/GetFilteredBlocks/${_prop.propertyId}'));
+    try {
+      final response = await http.get(Uri.parse(
+          'https://imiziapi.codeflux.co.za/api/Block/GetFilteredBlocks/${_prop.propertyId}'));
 
-    if (response.statusCode == 200) {
-      List<dynamic> jsonResponse = json.decode(response.body);
-      List<Blocks> blocks =
-          jsonResponse.map((block) => Blocks.fromJson(block)).toList();
+      if (response.statusCode == 200) {
+        bool tableExists = await doesBlocksTableExist();
 
-      //sort the blocks in ascending order of blockNumber
-      blocks.sort((a, b) => a.blockNumber.compareTo(b.blockNumber));
-      return blocks;
-    } else {
-      throw Exception('Could not get list of blocks within ${_prop.name}');
+        if (tableExists) {
+          await deleteAllBlocks();
+          await insertBlocksFromAPI(response.body);
+        } else {
+          await createBlocksTable();
+          await insertBlocksFromAPI(response.body);
+        }
+
+        List<Blocks> blocks = await getBlocksFromDB();
+        blocks.sort((a, b) => a.blockNumber.compareTo(b.blockNumber));
+        return blocks;
+      } else {
+        throw Exception('Could not get list of blocks within ${_prop.name}');
+      }
+    } catch (e) {
+      // No internet connection
+      bool tableExists = await doesBlocksTableExist();
+      if (tableExists) {
+        List<Blocks> blocks = await getBlocksFromDB();
+        blocks.sort((a, b) => a.blockNumber.compareTo(b.blockNumber));
+        return blocks;
+      } else {
+        throw Exception('Could not get list of blocks within ${_prop.name}');
+      }
     }
   }
 
-  //Trying Units another way
-  // Future<List<dynamic>> request() async {
-  //   var options = Options();
-  //   options.contentType = 'application/json';
-  //   String url = 'https://imiziapi.codeflux.co.za/api/Unit/UnitFilter';
-  //   Map<String, int> qParams = {
-  //     'blockId': selectedBlockID,
-  //     'propertyId': _prop.propertyId
-  //   };
-  //   Response response =
-  //       await dio.get(url, options: options, queryParameters: qParams);
+  Future<void> createBlocksTable() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'block_database.db'),
+      onCreate: (db, version) {
+        return db.execute(
+          'CREATE TABLE blocks(id INTEGER  PRIMARY KEY, blockId INTEGER, propertyId INTEGER, blockNumber TEXT, propertyName TEXT, description TEXT)',
+        );
+      },
+      version: 1,
+    );
+    await database.close();
+  }
 
-  //   print(response.data);
+  Future<bool> doesBlocksTableExist() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'block_database.db'),
+    );
+    final tables = await database
+        .query('sqlite_master', where: 'name = ?', whereArgs: ['blocks']);
+    await database.close();
+    return tables.isNotEmpty;
+  }
 
-  //   if (response.statusCode == 200) {
-  //     List<dynamic> data = response.data;
-  //     return data;
-  //   } else {
-  //     throw Exception(
-  //         'Could not get the List of Units from the selected Block');
-  //   }
-  // }
+  Future<void> deleteAllBlocks() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'block_database.db'),
+    );
+    await database.delete('blocks');
+    await database.close();
+  }
+
+  Future<void> insertBlocksFromAPI(String responseBody) async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'block_database.db'),
+    );
+    final List<dynamic> jsonResponse = json.decode(responseBody);
+    for (var block in jsonResponse) {
+      await database.insert(
+        'blocks',
+        Blocks.fromJson(block).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await database.close();
+  }
+
+  Future<List<Blocks>> getBlocksFromDB() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'block_database.db'),
+    );
+    final List<Map<String, dynamic>> maps = await database.query('blocks');
+    await database.close();
+    return List.generate(maps.length, (i) {
+      return Blocks.fromJson(maps[i]);
+    });
+  }
 
   Future<List<MeterReading>> fetchMeterReading() async {
-    DateTime now = DateTime.now();
-    int year = now.year;
-    int month = now.month;
-    final response = await http.get(Uri.parse(
-        'https://imiziapi.codeflux.co.za/api/MeterReading/search/$year/$month/$selectedBlockID'));
-    if (response.statusCode == 200) {
-      List<dynamic> jsonResponse = json.decode(response.body);
-      print(jsonResponse);
-      List<MeterReading> meterReadings = jsonResponse
-          .map((meterReading) => MeterReading.fromJson(meterReading))
-          .toList();
-      meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
-      return meterReadings;
-    } else {
-      throw Exception('Could not fetch readings for ${_prop.name}');
+    try {
+      DateTime now = DateTime.now();
+      int year = now.year;
+      int month = now.month;
+      final response = await http.get(Uri.parse(
+          'https://imiziapi.codeflux.co.za/api/MeterReading/search/$year/$month/$selectedBlockID'));
+
+      if (response.statusCode == 200) {
+        bool tableExists = await doesMeterReadingTableExist();
+        if (tableExists) {
+          await deleteAllMeterReading();
+          await insertMeterReadingFromAPI(response.body);
+        } else {
+          await createMeterReadingTable();
+          await insertMeterReadingFromAPI(response.body);
+        }
+
+        List<MeterReading> meterReadings = await getMeterReadingFromDB();
+        meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+        for (int i = 0; i < meterReadings.length; i++) {
+          textControllers.add(TextEditingController());
+        }
+        return meterReadings;
+      } else {
+        throw Exception(
+            'Could not fetch readings for ${selectedBlock?.blockNumber}');
+      }
+    } catch (e) {
+      // No internet connection
+      bool tableExists = await doesMeterReadingTableExist();
+      if (tableExists) {
+        List<MeterReading> meterReadings = await getMeterReadingFromDB();
+        meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+        for (int i = 0; i < meterReadings.length; i++) {
+          textControllers.add(TextEditingController());
+        }
+        return meterReadings;
+      } else {
+        throw Exception(
+            'Could not fetch readings for ${selectedBlock?.blockNumber}');
+      }
     }
+    // if (response.statusCode == 200) {
+    //   List<dynamic> jsonResponse = json.decode(response.body);
+    //   List<MeterReading> meterReadings = jsonResponse
+    //       .map((meterReading) => MeterReading.fromJson(meterReading))
+    //       .toList();
+    //   for (int i = 0; i < meterReadings.length; i++) {
+    //     textControllers.add(TextEditingController());
+    //   }
+    //   print('Text Controllers: ${textControllers.length}');
+    //   meterReadings.sort((a, b) => a.unitNumber.compareTo(b.unitNumber));
+    //   return meterReadings;
+    // } else {
+    //   throw Exception('Could not fetch readings for ${_prop.name}');
+    // }
+  }
+
+  Future<void> createMeterReadingTable() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'meter_database.db'),
+      onCreate: (db, version) {
+        return db.execute(
+            'CREATE TABLE meters(id INTEGER PRIMARY KEY, propertyId INTEGER, name TEXT, blockId INTEGER, blockNumber TEXT, unitId INTEGER, meterId INTEGER, meterNumber TEXT, reading INTEGER, previous INTEGER, unitNumber INTEGER, average INTEGER, month INTEGER, year INTEGER)');
+      },
+      version: 1,
+    );
+    await database.close();
+  }
+
+  Future<bool> doesMeterReadingTableExist() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'meter_database.db'),
+    );
+    final tables = await database
+        .query('sqlite_master', where: 'name = ?', whereArgs: ['meters']);
+    await database.close();
+    return tables.isNotEmpty;
+  }
+
+  Future<void> deleteAllMeterReading() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'meter_database.db'),
+    );
+    await database.delete('meters');
+    await database.close();
+  }
+
+  Future<void> insertMeterReadingFromAPI(String responseBody) async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'meter_database.db'),
+    );
+    final List<dynamic> jsonResponse = json.decode(responseBody);
+    for (var meter in jsonResponse) {
+      await database.insert(
+        'meters',
+        MeterReading.fromJson(meter).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await database.close();
+  }
+
+  Future<List<MeterReading>> getMeterReadingFromDB() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'meter_database.db'),
+    );
+    final List<Map<String, dynamic>> maps = await database.query('meters');
+    await database.close();
+    return List.generate(maps.length, (i) {
+      return MeterReading.fromJson(maps[i]);
+    });
   }
 
   // Pagination Funtionality:
@@ -387,7 +566,7 @@ class _MeterScreenState extends State<MeterScreen> {
                       controller: _firstController,
                       child: Wrap(direction: Axis.horizontal, children: [
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.80 / 5,
+                          width: MediaQuery.of(context).size.width * 0.75 / 5,
                           height: MediaQuery.of(context).size.height,
                           // color: Colors.blue,
                           child: Column(
@@ -428,7 +607,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                             return Text(
                                               'Unit ${unit.unitNumber}',
                                               style:
-                                                  const TextStyle(fontSize: 16),
+                                                  const TextStyle(fontSize: 15),
                                             );
                                           },
                                           separatorBuilder:
@@ -444,7 +623,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.85 / 5,
+                          width: MediaQuery.of(context).size.width * 0.95 / 5,
                           height: MediaQuery.of(context).size.height,
                           // color: Colors.amber,
                           child: Column(
@@ -475,7 +654,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
                                               left: 15.0,
-                                              top: 10.0,
+                                              top: 12.0,
                                               bottom: 25.0,
                                               right: 10.0),
                                           itemCount: metersToDisplay.length,
@@ -502,7 +681,7 @@ class _MeterScreenState extends State<MeterScreen> {
                         ),
                         Container(
                           width: ((MediaQuery.of(context).size.width) +
-                                  (MediaQuery.of(context).size.width) * 0.4) /
+                                  (MediaQuery.of(context).size.width) * 0.46) /
                               5,
                           height: MediaQuery.of(context).size.height,
                           // color: Colors.green,
@@ -527,18 +706,14 @@ class _MeterScreenState extends State<MeterScreen> {
                                       List<MeterReading> units = snapshot.data!;
                                       final unitsToDisplay =
                                           getMeterReadingForCurrentPage(units);
-                                      // Populate the list of controllers based on the number of units
-                                      for (int i = 0; i < units.length; i++) {
-                                        textControllers
-                                            .add(TextEditingController());
-                                      }
+
                                       return ListView.separated(
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
                                               right: 8.0,
                                               left: 8.0,
-                                              top: 9.0,
+                                              top: 7.0,
                                               bottom: 16.0),
                                           itemBuilder: (BuildContext context,
                                               int index) {
@@ -566,29 +741,30 @@ class _MeterScreenState extends State<MeterScreen> {
                                                     readOnly: true,
                                                     onTap: () {
                                                       showCustomKeypad(
-                                                          context,
-                                                          textControllers[
-                                                              index],
-                                                          unit.previous, (String
-                                                              updatedValue) {
-                                                        // The updatedValue parameter contains the latest value from the controller
-                                                        // You can use it as needed
-                                                        textValueNotifier
-                                                                .value =
-                                                            updatedValue;
-                                                        print(
-                                                            'Updated Value: $updatedValue');
+                                                        context,
+                                                        textControllers[index],
+                                                        unit.previous,
+                                                        (String updatedValue) {
+                                                          // The updatedValue parameter contains the latest value from the controller
 
-                                                        textControllers[index]
-                                                                .value =
-                                                            TextEditingValue(
-                                                          text: updatedValue,
-                                                          selection:
-                                                              textControllers[
-                                                                      index]
-                                                                  .selection,
-                                                        );
-                                                      });
+                                                          textValueNotifier
+                                                                  .value =
+                                                              updatedValue;
+
+                                                          print(
+                                                              'Updated Value: $updatedValue');
+
+                                                          textControllers[index]
+                                                                  .value =
+                                                              TextEditingValue(
+                                                            text: updatedValue,
+                                                            selection:
+                                                                textControllers[
+                                                                        index]
+                                                                    .selection,
+                                                          );
+                                                        },
+                                                      );
                                                     },
                                                     controller:
                                                         textControllers[index],
@@ -624,7 +800,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                               (BuildContext context,
                                                       int index) =>
                                                   const SizedBox(
-                                                    height: 22.0,
+                                                    height: 20.0,
                                                   ),
                                           itemCount: unitsToDisplay.length);
                                     }
@@ -635,7 +811,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.80 / 5,
+                          width: MediaQuery.of(context).size.width * 0.73 / 5,
                           height: MediaQuery.of(context).size.height,
                           // color: Colors.orange,
                           child: Column(
@@ -665,7 +841,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
-                                              left: 15.0,
+                                              left: 25.0,
                                               top: 10.0,
                                               bottom: 25.0,
                                               right: 10.0),
@@ -692,7 +868,7 @@ class _MeterScreenState extends State<MeterScreen> {
                           ),
                         ),
                         Container(
-                          width: MediaQuery.of(context).size.width * 0.80 / 5,
+                          width: MediaQuery.of(context).size.width * 0.73 / 5,
                           height: MediaQuery.of(context).size.height,
                           // color: Colors.red,
                           child: Column(children: <Widget>[
@@ -721,7 +897,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           padding: const EdgeInsets.only(
-                                              left: 15.0,
+                                              left: 25.0,
                                               top: 10.0,
                                               bottom: 25.0,
                                               right: 10.0),
