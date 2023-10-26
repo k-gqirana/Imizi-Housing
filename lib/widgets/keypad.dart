@@ -30,8 +30,8 @@ class _CustomKeypadState extends State<CustomKeypad> {
             // border: Border.all(color: Colors.black),
             color: Colors.white,
           ),
-          width: 260,
-          height: MediaQuery.of(context).size.height * 0.8,
+          width: 320,
+          height: MediaQuery.of(context).size.height * 0.65,
           child: Column(
             children: [
               Padding(

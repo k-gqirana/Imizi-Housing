@@ -18,7 +18,7 @@ class _SplashScreenState extends State<SplashScreen>
     SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.immersive); // removing top and bottom bar
 
-    Future.delayed(Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 4), () {
       Navigator.of(context)
           .pushReplacement(MaterialPageRoute(builder: (_) => LoginScreen()));
     });
@@ -38,11 +38,12 @@ class _SplashScreenState extends State<SplashScreen>
         body: Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.lime, Colors.orange],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+        color: Colors.white,
+        // gradient: LinearGradient(
+        //   colors: [Colors.lime, Colors.orange],
+        //   begin: Alignment.topRight,
+        //   end: Alignment.bottomLeft,
+        // ),
       ),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Image.asset('assets/images/imiziLogo.jpg'),
@@ -53,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
           'Imizi Housing',
           style: TextStyle(
             fontStyle: FontStyle.italic,
-            color: Colors.white,
+            color: Color.fromARGB(255, 166, 160, 55),
             fontSize: 32,
           ),
         ),

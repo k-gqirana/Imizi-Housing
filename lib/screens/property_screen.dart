@@ -6,6 +6,7 @@ import 'package:flutx/flutx.dart';
 import 'package:imiziappthemed/screens/meter_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
+import './login_screen.dart';
 
 class Property {
   final int propertyId;
@@ -49,7 +50,9 @@ class Property {
 }
 
 class PropertyScreen extends StatefulWidget {
-  const PropertyScreen({Key? key}) : super(key: key);
+  final Login loginDetails;
+  const PropertyScreen({Key? key, required this.loginDetails})
+      : super(key: key);
 
   @override
   State<PropertyScreen> createState() => _PropertyScreenState();
@@ -57,7 +60,7 @@ class PropertyScreen extends StatefulWidget {
 
 class _PropertyScreenState extends State<PropertyScreen> {
   late Future<List<Property>> futureProperties;
-
+  late Login _login;
   @override
   void initState() {
     super.initState();
@@ -67,7 +70,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
   Future<List<Property>> fetchProperties() async {
     try {
       final response = await http
-          .get(Uri.parse('https://imiziapi.codeflux.co.za/api/Property/'));
+          .get(Uri.parse('https://imiziapi.codeflux.co.za/api/Property/GetPropertyByUserId/${_login.userId}'));
 
       if (response.statusCode == 200) {
         bool tableExists = await doesPropertyTableExist();
@@ -84,7 +87,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
         properties.sort((a, b) => a.name.compareTo(b.name));
         return properties;
       } else {
-        throw Exception('Failed Loading Properties');
+        throw Exception('Failed Loading Properties from Live Database');
       }
     } catch (e) {
       // No internet connection
@@ -94,7 +97,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
         properties.sort((a, b) => a.name.compareTo(b.name));
         return properties;
       } else {
-        throw Exception('Failed Loading Properties');
+        throw Exception('${e.runtimeType}');
       }
     }
   }
@@ -160,7 +163,10 @@ class _PropertyScreenState extends State<PropertyScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) {
-          return MeterScreen(property: property);
+          return MeterScreen(
+            property: property,
+            loginDetails: _login,
+          );
         },
       ),
     );

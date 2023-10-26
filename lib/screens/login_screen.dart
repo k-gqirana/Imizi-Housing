@@ -3,6 +3,17 @@ import 'package:flutx/flutx.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:imiziappthemed/screens/property_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class Login {
+  final int userId;
+
+  Login({required this.userId});
+
+  Login.fromJson(Map<String, dynamic> json) : userId = json['userId'] as int;
+  Map<String, dynamic> toJson() => {'userId': userId};
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +24,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool _passwordVisible = false;
+  TextEditingController userName = TextEditingController();
+  TextEditingController password = TextEditingController();
+  late Login _login;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 380.0,
                         padding: const EdgeInsets.only(left: 16, right: 16),
                         child: CupertinoTextField(
+                          controller: userName,
                           decoration: BoxDecoration(
                               color: theme.colorScheme.background,
                               border: Border.all(color: Colors.black)),
@@ -103,6 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 380.0,
                         padding: const EdgeInsets.only(left: 16, right: 16),
                         child: CupertinoTextField(
+                          controller: password,
                           obscureText: _passwordVisible,
                           decoration: BoxDecoration(
                               color: theme.colorScheme.background,
@@ -152,11 +168,36 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadiusAll: 0.0,
                           backgroundColor:
                               const Color.fromARGB(255, 166, 160, 55),
-                          onPressed: () {
+                          onPressed: () async {
                             // Logic to Authenticate a User
-                            Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                    builder: (_) => PropertyScreen()));
+                            String url =
+                                "https://imiziapi.co.za/api/User/login";
+                            Map<String, String> jsonResponse = {
+                              'username': userName.text,
+                              'password': password.text,
+                            };
+                            print(jsonResponse);
+                            try {
+                              final response = await http.post(Uri.parse(url),
+                                  headers: <String, String>{
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: jsonEncode(jsonResponse));
+                              if (response.statusCode == 200) {
+                                print("response successful");
+                                final loginMap = jsonDecode(response.body)
+                                    as Map<String, dynamic>;
+                                Login loggedUser = Login.fromJson(loginMap);
+                                Navigator.of(context)
+                                    .pushReplacement(MaterialPageRoute(
+                                        builder: (_) => PropertyScreen(
+                                              loginDetails: loggedUser,
+                                            )));
+                              }
+                            } catch (e) {
+                              throw Exception(
+                                  "Could not login, check your details ${e.runtimeType}");
+                            }
                           },
                           child: const Text(
                             'Login',
