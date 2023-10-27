@@ -64,13 +64,14 @@ class _PropertyScreenState extends State<PropertyScreen> {
   @override
   void initState() {
     super.initState();
+    _login = widget.loginDetails;
     futureProperties = fetchProperties();
   }
 
   Future<List<Property>> fetchProperties() async {
     try {
-      final response = await http
-          .get(Uri.parse('https://imiziapi.codeflux.co.za/api/Property/GetPropertyByUserId/${_login.userId}'));
+      final response = await http.get(Uri.parse(
+          'https://imiziapi.codeflux.co.za/api/Property/GetPropertyByUserId/${_login.userId}'));
 
       if (response.statusCode == 200) {
         bool tableExists = await doesPropertyTableExist();

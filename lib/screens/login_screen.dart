@@ -26,7 +26,39 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _passwordVisible = false;
   TextEditingController userName = TextEditingController();
   TextEditingController password = TextEditingController();
-  late Login _login;
+  bool nextScreen = false;
+
+  Future<void> login(BuildContext context) async {
+    String url = "https://imiziapi.codeflux.co.za/api/User/login";
+    Map<String, String> jsonResponse = {
+      'userName': userName.text,
+      'password': password.text,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(jsonResponse),
+      );
+
+      if (response.statusCode == 200) {
+        final loginMap = jsonDecode(response.body) as Map<String, dynamic>;
+        Login loggedUser = Login.fromJson(loginMap);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => PropertyScreen(
+              loginDetails: loggedUser,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print(e);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,35 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           backgroundColor:
                               const Color.fromARGB(255, 166, 160, 55),
                           onPressed: () async {
-                            // Logic to Authenticate a User
-                            String url =
-                                "https://imiziapi.co.za/api/User/login";
-                            Map<String, String> jsonResponse = {
-                              'username': userName.text,
-                              'password': password.text,
-                            };
-                            print(jsonResponse);
-                            try {
-                              final response = await http.post(Uri.parse(url),
-                                  headers: <String, String>{
-                                    'Content-Type': 'application/json',
-                                  },
-                                  body: jsonEncode(jsonResponse));
-                              if (response.statusCode == 200) {
-                                print("response successful");
-                                final loginMap = jsonDecode(response.body)
-                                    as Map<String, dynamic>;
-                                Login loggedUser = Login.fromJson(loginMap);
-                                Navigator.of(context)
-                                    .pushReplacement(MaterialPageRoute(
-                                        builder: (_) => PropertyScreen(
-                                              loginDetails: loggedUser,
-                                            )));
-                              }
-                            } catch (e) {
-                              throw Exception(
-                                  "Could not login, check your details ${e.runtimeType}");
-                            }
+                            await login(context);
                           },
                           child: const Text(
                             'Login',
