@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../screens/property_screen.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutx/flutx.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import '../widgets/keypad.dart';
 import 'package:sqflite/sqflite.dart';
@@ -157,15 +156,15 @@ class _MeterScreenState extends State<MeterScreen> {
   //Scroll Controller
   final ScrollController _firstController = ScrollController();
 
-  //Using DIO package to get units
-  final dio = Dio();
-
   // Define a list of controllers outside the FutureBuilder
   List<TextEditingController> textControllers = [];
   List<bool> showTextFields = [];
 
-// Creating a unique List of Text Editing Controllers
+// Creating a unique List of Text Editing Controllers for each block
   final Map<int, List<TextEditingController>> listOfTextControllers = {};
+
+  //Controllers for empty fields when checking uncaptured textbox
+  final Map<int, List<TextEditingController>> emptyController = {};
 
   //Checkbox bool
   bool isChecked = false;
@@ -175,6 +174,7 @@ class _MeterScreenState extends State<MeterScreen> {
     // TODO: implement initState
     super.initState();
     _prop = widget.property;
+    _login = widget.loginDetails;
     // When screen loads, get the blocks for the current Property
     futureBlocks = fetchBlocks();
     // Initialize selectedBlock with the first item in blocks when available
@@ -453,11 +453,11 @@ class _MeterScreenState extends State<MeterScreen> {
           emptyMeter.add(meterReading);
         }
       }
-      if (emptyMeter.length != 0) {
-        for (var i = 0; i < emptyMeter.length; i++) {
-          listOfTextControllers[selectedBlockID]?[i].clear();
-        }
-      }
+      // if (emptyMeter.length != 0) {
+      //   for (var i = 0; i < emptyMeter.length; i++) {
+      //     listOfTextControllers[selectedBlockID]?[i].clear();
+      //   }
+      // }
 
       return emptyMeter;
     } else {
@@ -510,6 +510,30 @@ class _MeterScreenState extends State<MeterScreen> {
     } else {
       print("The meterReading Table does not exits in the device");
     }
+  }
+
+  String formatMeterReadingsForPrint(List<MeterReading> meterReadings) {
+    final List<String> formattedReadings = [];
+    for (var reading in meterReadings) {
+      formattedReadings.add('MeterReading('
+          'propertyId: ${reading.propertyId}, '
+          'name: ${reading.name}, '
+          'blockId: ${reading.blockId}, '
+          'blockNumber: ${reading.blockNumber}, '
+          'unitId: ${reading.unitId}, '
+          'meterId: ${reading.meterId}, '
+          'meterNumber: ${reading.meterNumber}, '
+          'currentReading: ${reading.currentReading}, '
+          'previousReading: ${reading.previousReading}, '
+          // 'meterType: ${reading.meterType}, '
+          'lastMonthConsumption: ${reading.lastMonthConsumption}, '
+          'unitNumber: ${reading.unitNumber}, '
+          'averageConsumption: ${reading.averageConsumption}, '
+          'month: ${reading.month}, '
+          'year: ${reading.year}'
+          ')');
+    }
+    return formattedReadings.join('\n');
   }
 
   // Showing readings on Textfield even when user exists the app
@@ -572,56 +596,6 @@ class _MeterScreenState extends State<MeterScreen> {
       },
     );
   }
-
-  // Widget buildTextField(
-  //     BuildContext context,
-  //     String text,
-  //     Color textColor,
-  //     TextEditingController textController,
-  //     MeterReading unit,
-  //     ValueNotifier<String> textValueNotifier) {
-  //   return Container(
-  //     child: CupertinoTextField(
-  //       readOnly: true,
-  //       onTap: () {
-  //         showCustomKeypad(
-  //           context,
-  //           textController,
-  //           unit.previousReading,
-  //           (String updatedValue) {
-  //             // The updatedValue parameter contains the latest value from the controller
-
-  //             textValueNotifier.value = updatedValue;
-
-  //             print('Updated Value: $updatedValue');
-
-  //             textController.value = TextEditingValue(
-  //               text: updatedValue,
-  //               selection: textController.selection,
-  //             );
-  //           },
-  //         );
-  //       },
-  //       controller: textController,
-  //       decoration: BoxDecoration(
-  //         color: theme.colorScheme.background,
-  //         border: Border.all(color: Colors.black),
-  //       ),
-  //       cursorColor: theme.colorScheme.primary,
-  //       placeholder: "Enter Meter Reading",
-  //       style: TextStyle(color: textColor, fontSize: 14),
-  //       padding: const EdgeInsets.only(
-  //         top: 8,
-  //         bottom: 8,
-  //         left: 8,
-  //         right: 4,
-  //       ),
-  //       placeholderStyle: TextStyle(
-  //         color: theme.colorScheme.onBackground.withAlpha(160),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -725,6 +699,13 @@ class _MeterScreenState extends State<MeterScreen> {
                                       futureSavedTextControllers =
                                           fetchSavedControllers();
                                     });
+                                    // Do local database update here
+                                    // List<MeterReading> updateOnClick =
+                                    //     await getMeterReadingFromDB();
+                                    // await updateCurrentReadings(
+                                    //     updateOnClick,
+                                    //     listOfTextControllers[
+                                    //         selectedBlockID]!);
                                   },
                                   value: selectedBlock, // Set initial value
                                 ),
@@ -735,31 +716,6 @@ class _MeterScreenState extends State<MeterScreen> {
                   ],
                 ),
               ),
-              // Padding(
-              //   padding:
-              //       const EdgeInsets.only(left: 44.0, bottom: 0.5, right: 24.0),
-              //   child: Row(
-              //     children: <Widget>[
-              //       Checkbox(
-              //         checkColor: Colors.white,
-              //         // fillColor: MaterialStateProperty.resolveWith(getColor),
-              //         value: isChecked,
-              //         onChanged: (bool? value) async {
-              //           if (value != null) {
-              //             if (value) {
-              //               futureUncapturedMeterReading = uncapturedMeters();
-              //             }
-              //           }
-              //           setState(() {
-              //             isChecked = value!;
-              //           });
-              //         },
-              //       ),
-              //       const SizedBox(width: 1.5),
-              //       const Text('Uncaptured Meters Only'),
-              //     ],
-              //   ),
-              // ),
               const Padding(
                 padding: EdgeInsets.only(
                     left: 48.0, top: 16.0, bottom: 6.0, right: 28.0),
@@ -1042,9 +998,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                                 unitsToDisplay[index];
                                             ValueNotifier<String>
                                                 textValueNotifier =
-                                                ValueNotifier<String>(
-                                              unit.currentReading.toString(),
-                                            );
+                                                ValueNotifier<String>("");
                                             return ValueListenableBuilder<
                                                 String>(
                                               valueListenable:
@@ -1058,21 +1012,24 @@ class _MeterScreenState extends State<MeterScreen> {
                                                                     0.25)
                                                         ? Colors.red
                                                         : Colors.black;
-                                                if (listOfTextControllers[
-                                                                selectedBlockID]
-                                                            ?[index +
-                                                                (currentPage *
-                                                                    itemsPerPage)]
-                                                        .text !=
-                                                    "") {
+                                                if (unit.currentReading != 0) {
+                                                  final textValue = unit
+                                                      .currentReading
+                                                      .toString();
                                                   listOfTextControllers[
                                                                   selectedBlockID]
-                                                              ?[index +
+                                                              ?[
+                                                              index +
                                                                   (currentPage *
                                                                       itemsPerPage)]
-                                                          .text ==
-                                                      unit.currentReading
-                                                          .toString();
+                                                          .value =
+                                                      TextEditingValue(
+                                                          text: textValue,
+                                                          selection: TextSelection
+                                                              .fromPosition(
+                                                                  TextPosition(
+                                                                      offset: textValue
+                                                                          .length)));
                                                 }
                                                 return Container(
                                                   child: CupertinoTextField(
@@ -1366,6 +1323,13 @@ class _MeterScreenState extends State<MeterScreen> {
                         String url =
                             'https://imiziapi.codeflux.co.za/api/MeterReading/update-mobile-readings';
 
+                        List<MeterReading> updateLocal =
+                            await getMeterReadingFromDB();
+                        await updateCurrentReadings(updateLocal,
+                            listOfTextControllers[selectedBlockID]!);
+                        List<MeterReading> recent =
+                            await getMeterReadingFromDB();
+                        print(formatMeterReadingsForPrint(recent));
                         List<Map<String, dynamic>> jsonResponse = [];
                         final List<MeterReading> readings =
                             await fetchMeterReading();
@@ -1377,10 +1341,11 @@ class _MeterScreenState extends State<MeterScreen> {
                             'reading': int.tryParse(
                                     listOfTextControllers[selectedBlockID]![i]
                                         .text) ??
-                                0
+                                0,
+                            'userId': _login.userId,
                           });
                         }
-                        //Fix update to local database
+                        //Updating local
 
                         // // Post method
                         try {

@@ -167,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           suffix: GestureDetector(
                             onTap: () {
                               setState(() {
-                                _passwordVisible = _passwordVisible;
+                                _passwordVisible = !_passwordVisible;
                               });
                             },
                             child: Padding(
