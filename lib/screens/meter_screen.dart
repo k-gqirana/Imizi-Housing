@@ -566,11 +566,12 @@ class _MeterScreenState extends State<MeterScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           content: CustomKeypad(
+            textController: controller!,
             onKeypadButtonPressed: (String buttonText) {
               if (buttonText == 'C') {
-                controller?.clear();
+                controller.clear();
               } else if (buttonText == '<') {
-                if (controller!.text.isNotEmpty) {
+                if (controller.text.isNotEmpty) {
                   controller.text =
                       controller.text.substring(0, controller.text.length - 1);
                 }
@@ -578,7 +579,7 @@ class _MeterScreenState extends State<MeterScreen> {
                 Navigator.of(context).pop();
               } else if (buttonText == 'Submit') {
                 // Handle submit button press, to post readings to API
-                String enteredText = controller!.text;
+                String enteredText = controller.text;
                 print('Entered Text: $enteredText');
                 // Call the onSubmitted callback and pass the entered text
                 onSubmitted(enteredText);
@@ -586,7 +587,7 @@ class _MeterScreenState extends State<MeterScreen> {
                 // futureMeterReading = uncapturedMeters();
                 Navigator.of(context).pop();
               } else {
-                controller!.text += buttonText;
+                controller.text += buttonText;
               }
               // Call the callback function to update the controller's value
               // onSubmitted(controller.text);

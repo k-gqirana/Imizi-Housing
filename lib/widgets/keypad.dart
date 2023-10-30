@@ -3,7 +3,13 @@ import 'package:flutter/cupertino.dart';
 
 class CustomKeypad extends StatefulWidget {
   final Function(String) onKeypadButtonPressed;
-  CustomKeypad({required this.onKeypadButtonPressed});
+  final TextEditingController
+      textController; // Accept the controller as a parameter
+
+  CustomKeypad({
+    required this.onKeypadButtonPressed,
+    required this.textController,
+  });
 
   @override
   // ignore: library_private_types_in_public_api
@@ -37,7 +43,7 @@ class _CustomKeypadState extends State<CustomKeypad> {
               Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: CupertinoTextField(
-                  controller: _textController,
+                  controller: widget.textController,
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.black),
                   ),
@@ -61,7 +67,7 @@ class _CustomKeypadState extends State<CustomKeypad> {
                   itemBuilder: (context, index) {
                     return GestureDetector(
                       onTap: () {
-                        onKeypadButtonPressed(keypadButtons[index]);
+                        widget.onKeypadButtonPressed(keypadButtons[index]);
                       },
                       child: Container(
                         decoration: const BoxDecoration(
@@ -160,7 +166,6 @@ class _CustomKeypadState extends State<CustomKeypad> {
 //     ),
 //   ));
 // }
-
 
 
 
