@@ -185,7 +185,7 @@ class _PropertyScreenState extends State<PropertyScreen> {
             children: <Widget>[
               Padding(
                 padding:
-                    const EdgeInsets.only(left: 48.0, top: 16.0, bottom: 16.0),
+                    const EdgeInsets.only(left: 48.0, top: 46.0, bottom: 16.0),
                 child: Image.asset(
                   'assets/images/imiziLogo.jpg',
                 ),

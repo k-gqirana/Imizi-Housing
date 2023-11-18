@@ -453,11 +453,11 @@ class _MeterScreenState extends State<MeterScreen> {
           emptyMeter.add(meterReading);
         }
       }
-      // if (emptyMeter.length != 0) {
-      //   for (var i = 0; i < emptyMeter.length; i++) {
-      //     listOfTextControllers[selectedBlockID]?[i].clear();
-      //   }
-      // }
+      if (emptyMeter.length != 0) {
+        for (var i = 0; i < emptyMeter.length; i++) {
+          listOfTextControllers[selectedBlockID]?[i].clear();
+        }
+      }
 
       return emptyMeter;
     } else {
@@ -575,8 +575,6 @@ class _MeterScreenState extends State<MeterScreen> {
                   controller.text =
                       controller.text.substring(0, controller.text.length - 1);
                 }
-                // Close the keypad widget
-                Navigator.of(context).pop();
               } else if (buttonText == 'Submit') {
                 // Handle submit button press, to post readings to API
                 String enteredText = controller.text;
@@ -598,6 +596,27 @@ class _MeterScreenState extends State<MeterScreen> {
     );
   }
 
+  void showSubmitMessage(BuildContext context, String response) {
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Submit Status"),
+            content: Text(response),
+            actions: <Widget>[
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Color.fromARGB(255, 166, 160, 55)),
+                  ))
+            ],
+          );
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -609,7 +628,7 @@ class _MeterScreenState extends State<MeterScreen> {
             children: <Widget>[
               Padding(
                 padding: const EdgeInsets.only(
-                    left: 48.0, top: 16.0, bottom: 16.0, right: 24.0),
+                    left: 48.0, top: 45.0, bottom: 16.0, right: 24.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
@@ -632,8 +651,80 @@ class _MeterScreenState extends State<MeterScreen> {
                               onChanged: (bool? value) async {
                                 if (value != null) {
                                   if (value) {
+                                    String url =
+                                        'https://imiziapi.codeflux.co.za/api/MeterReading/update-mobile-readings';
+
+                                    List<MeterReading> updateLocal =
+                                        await getMeterReadingFromDB();
+                                    await updateCurrentReadings(
+                                        updateLocal,
+                                        listOfTextControllers[
+                                            selectedBlockID]!);
+                                    List<MeterReading> recent =
+                                        await getMeterReadingFromDB();
+                                    print(formatMeterReadingsForPrint(recent));
+                                    List<Map<String, dynamic>> jsonResponse =
+                                        [];
+                                    final List<MeterReading> readings =
+                                        await fetchMeterReading();
+
+                                    for (int i = 0; i < readings.length; i++) {
+                                      MeterReading reading = readings[i];
+                                      jsonResponse.add({
+                                        'meterId': reading.meterId,
+                                        'reading': int.tryParse(
+                                                listOfTextControllers[
+                                                        selectedBlockID]![i]
+                                                    .text) ??
+                                            0,
+                                        'userId': _login.userId,
+                                      });
+                                    }
+                                    //Updating local
+
+                                    // // Post method
+                                    try {
+                                      final response = await http.post(
+                                          Uri.parse(url),
+                                          headers: <String, String>{
+                                            'Content-Type': 'application/json'
+                                          },
+                                          body: jsonEncode(jsonResponse));
+                                      if (response.statusCode == 200) {
+                                        print('Response successful');
+                                      } else {
+                                        print(
+                                            'Error code: ${response.statusCode}');
+                                        print(
+                                            'Error message: ${response.body}');
+                                      }
+                                    } catch (e) {
+                                      print('Post Error: ${e.runtimeType}');
+                                    }
                                     futureUncapturedMeterReading =
                                         uncapturedMeters();
+                                  } else {
+                                    futureMeterReading = fetchMeterReading();
+                                    // Fetch controller values again
+                                    List<MeterReading> meters =
+                                        await getMeterReadingFromDB();
+                                    for (var i = 0; i < meters.length; i++) {
+                                      MeterReading meter = meters[i];
+                                      if (meter.currentReading != 0) {
+                                        final textValue =
+                                            meter.currentReading.toString();
+                                        listOfTextControllers[selectedBlockID]
+                                                    ?[i]
+                                                .value =
+                                            TextEditingValue(
+                                                text: textValue,
+                                                selection:
+                                                    TextSelection.fromPosition(
+                                                        TextPosition(
+                                                            offset: textValue
+                                                                .length)));
+                                      }
+                                    }
                                   }
                                 }
                                 setState(() {
@@ -668,7 +759,7 @@ class _MeterScreenState extends State<MeterScreen> {
                                   .map(
                                     (block) => DropdownMenuItem<Blocks>(
                                       value: block,
-                                      child: Text(block.blockNumber),
+                                      child: Text('Block ${block.blockNumber}'),
                                     ),
                                   )
                                   .toList();
@@ -1032,76 +1123,75 @@ class _MeterScreenState extends State<MeterScreen> {
                                                                       offset: textValue
                                                                           .length)));
                                                 }
-                                                return Container(
-                                                  child: CupertinoTextField(
-                                                    readOnly: true,
-                                                    onTap: () {
-                                                      showCustomKeypad(
-                                                        context,
+                                                return CupertinoTextField(
+                                                  readOnly: true,
+                                                  onTap: () {
+                                                    showCustomKeypad(
+                                                      context,
+                                                      listOfTextControllers[
+                                                              selectedBlockID]?[
+                                                          index +
+                                                              (currentPage *
+                                                                  itemsPerPage)],
+                                                      unit.previousReading,
+                                                      (String updatedValue) {
+                                                        // The updatedValue parameter contains the latest value from the controller
+
+                                                        textValueNotifier
+                                                                .value =
+                                                            updatedValue;
+
+                                                        print(
+                                                            'Updated Value: $updatedValue');
+
                                                         listOfTextControllers[
-                                                                selectedBlockID]
-                                                            ?[index +
-                                                                (currentPage *
-                                                                    itemsPerPage)],
-                                                        unit.previousReading,
-                                                        (String updatedValue) {
-                                                          // The updatedValue parameter contains the latest value from the controller
-
-                                                          textValueNotifier
-                                                                  .value =
-                                                              updatedValue;
-
-                                                          print(
-                                                              'Updated Value: $updatedValue');
-
-                                                          listOfTextControllers[
-                                                                      selectedBlockID]
-                                                                  ?[index +
+                                                                    selectedBlockID]
+                                                                ?[index +
+                                                                    (currentPage *
+                                                                        itemsPerPage)]
+                                                            .value = TextEditingValue(
+                                                          text: updatedValue,
+                                                          selection: listOfTextControllers[
+                                                                      selectedBlockID]![
+                                                                  index +
                                                                       (currentPage *
                                                                           itemsPerPage)]
-                                                              .value = TextEditingValue(
-                                                            text: updatedValue,
-                                                            selection: listOfTextControllers[
-                                                                        selectedBlockID]![
-                                                                    index +
-                                                                        (currentPage *
-                                                                            itemsPerPage)]
-                                                                .selection,
-                                                          );
-                                                        },
-                                                      );
-                                                    },
-                                                    controller:
-                                                        listOfTextControllers[
-                                                                selectedBlockID]
-                                                            ?[index +
-                                                                (currentPage *
-                                                                    itemsPerPage)],
-                                                    decoration: BoxDecoration(
-                                                      color: theme.colorScheme
-                                                          .background,
-                                                      border: Border.all(
-                                                          color: Colors.black),
-                                                    ),
-                                                    cursorColor: theme
-                                                        .colorScheme.primary,
-                                                    placeholder:
-                                                        "Enter Meter Reading",
-                                                    style: TextStyle(
-                                                      color: textColor,
-                                                      fontSize: 14,
-                                                    ),
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 8,
-                                                            bottom: 8,
-                                                            left: 8,
-                                                            right: 4),
-                                                    placeholderStyle: TextStyle(
-                                                      color: theme.colorScheme
-                                                          .onBackground
-                                                          .withAlpha(160),
-                                                    ),
+                                                              .selection,
+                                                        );
+                                                      },
+                                                    );
+                                                  },
+                                                  controller:
+                                                      listOfTextControllers[
+                                                              selectedBlockID]
+                                                          ?[
+                                                          index +
+                                                              (currentPage *
+                                                                  itemsPerPage)],
+                                                  decoration: BoxDecoration(
+                                                    color: theme
+                                                        .colorScheme.background,
+                                                    border: Border.all(
+                                                        color: Colors.black),
+                                                  ),
+                                                  cursorColor:
+                                                      theme.colorScheme.primary,
+                                                  placeholder:
+                                                      "Enter Meter Reading",
+                                                  style: TextStyle(
+                                                    color: textColor,
+                                                    fontSize: 14,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          top: 8,
+                                                          bottom: 8,
+                                                          left: 8,
+                                                          right: 4),
+                                                  placeholderStyle: TextStyle(
+                                                    color: theme.colorScheme
+                                                        .onBackground
+                                                        .withAlpha(160),
                                                   ),
                                                 );
                                               },
@@ -1356,13 +1446,24 @@ class _MeterScreenState extends State<MeterScreen> {
                               },
                               body: jsonEncode(jsonResponse));
                           if (response.statusCode == 200) {
-                            print('Response successful');
+                            String text =
+                                "You have successfuly updated the readings";
+                            showSubmitMessage(context, text);
                           } else {
-                            print('Error code: ${response.statusCode}');
-                            print('Error message: ${response.body}');
+                            String error =
+                                "Encountered an error, Error Code: ${response.statusCode}, description: ${response.body}";
+                            showSubmitMessage(context, error);
                           }
+                        } on SocketException {
+                          List<MeterReading> updateLocal =
+                              await getMeterReadingFromDB();
+                          await updateCurrentReadings(updateLocal,
+                              listOfTextControllers[selectedBlockID]!);
+                          String text =
+                              "You have successfuly updated the readings";
+                          showSubmitMessage(context, text);
                         } catch (e) {
-                          print('Post Error: ${e.runtimeType}');
+                          showSubmitMessage(context, '$e');
                         }
                       },
                       child: const Text(

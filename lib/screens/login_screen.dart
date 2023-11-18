@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutx/flutx.dart';
 import 'package:flutter/cupertino.dart';
@@ -5,6 +6,8 @@ import 'package:imiziappthemed/screens/property_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
 
 class Login {
   final int userId;
@@ -13,6 +16,34 @@ class Login {
 
   Login.fromJson(Map<String, dynamic> json) : userId = json['userId'] as int;
   Map<String, dynamic> toJson() => {'userId': userId};
+}
+
+class Users {
+  final int userId;
+  final String userName;
+  final String password;
+
+  Users({required this.userId, required this.userName, required this.password});
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'userName': userName,
+      'password': password,
+    };
+  }
+
+  Map<String, dynamic> toUserId() {
+    return {'userId': userId};
+  }
+
+  factory Users.fromJson(Map<String, dynamic> json) {
+    return Users(
+      userId: json['userId'],
+      userName: json['userName'],
+      password: json['password'],
+    );
+  }
 }
 
 class LoginScreen extends StatefulWidget {
@@ -27,8 +58,107 @@ class _LoginScreenState extends State<LoginScreen> {
   TextEditingController userName = TextEditingController();
   TextEditingController password = TextEditingController();
   bool nextScreen = false;
+    late Future<List<Users>> futureUsers;
 
-  Future<void> login(BuildContext context) async {
+  @override
+  void initState() {
+    super.initState();
+    futureUsers = fetchUsers();
+  }
+
+    Future<List<Users>> fetchUsers() async {
+    try {
+      final response =
+          await http.get(Uri.parse('https://imiziapi.codeflux.co.za/api/User'));
+      if (response.statusCode == 200) {
+        bool tableExists = await doesUsersTableExist();
+
+        if (tableExists) {
+          await deleteAllUsers();
+          await insertUsersFromAPI(response.body);
+        } else {
+          await createUsersTable();
+          await insertUsersFromAPI(response.body);
+        }
+
+        List<Users> users = await getUsersFromDB();
+
+        return users;
+      } else {
+        throw Exception(
+            'Could not get users, response code: ${response.statusCode}');
+      }
+    } on SocketException {
+      bool tableExitst = await doesUsersTableExist();
+      if (tableExitst) {
+        List<Users> users = await getUsersFromDB();
+        return users;
+      } else {
+        throw Exception('Users Table does not exist');
+      }
+    } catch (e) {
+      throw Exception('Could not log in $e');
+    }
+  }
+
+  Future<void> createUsersTable() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'user_database.db'),
+      onCreate: (db, version) {
+        return db.execute(
+          'CREATE TABLE users(id INTEGER  PRIMARY KEY, userId INTEGER, userName TEXT, password TEXT)',
+        );
+      },
+      version: 1,
+    );
+    await database.close();
+  }
+
+  Future<bool> doesUsersTableExist() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'user_database.db'),
+    );
+    final tables = await database
+        .query('sqlite_master', where: 'name = ?', whereArgs: ['users']);
+    await database.close();
+    return tables.isNotEmpty;
+  }
+
+  Future<void> deleteAllUsers() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'user_database.db'),
+    );
+    await database.delete('users');
+    await database.close();
+  }
+
+  Future<void> insertUsersFromAPI(String responseBody) async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'user_database.db'),
+    );
+    final List<dynamic> jsonResponse = json.decode(responseBody);
+    for (var block in jsonResponse) {
+      await database.insert(
+        'users',
+        Users.fromJson(block).toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await database.close();
+  }
+
+  Future<List<Users>> getUsersFromDB() async {
+    final database = await openDatabase(
+      join(await getDatabasesPath(), 'user_database.db'),
+    );
+    final List<Map<String, dynamic>> maps = await database.query('users');
+    await database.close();
+    return List.generate(maps.length, (i) {
+      return Users.fromJson(maps[i]);
+    });
+  }
+
+    Future<void> login(BuildContext context) async {
     String url = "https://imiziapi.codeflux.co.za/api/User/login";
     Map<String, String> jsonResponse = {
       'userName': userName.text,
@@ -55,8 +185,36 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+    } on SocketException {
+      bool tableExists = await doesUsersTableExist();
+      if (tableExists) {
+        bool isUser = false;
+        List<Users> users = await getUsersFromDB();
+        for (var i = 0; i < users.length; i++) {
+          Users user = users[i];
+          print(user.password);
+          if (user.userName == userName.text &&
+              user.password == password.text) {
+            isUser = true;
+            Login loggedUser = Login.fromJson(user.toUserId());
+            print(loggedUser);
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => PropertyScreen(
+                  loginDetails: loggedUser,
+                ),
+              ),
+            );
+          }
+        }
+        if (!isUser) {
+          throw Exception('Incorrect Login Details');
+        }
+      } else {
+        throw Exception('Users Table does not exist');
+      }
     } catch (e) {
-      print(e);
+      throw Exception('Could not login, $e');
     }
   }
 
@@ -71,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: <Widget>[
               Padding(
                 padding:
-                    const EdgeInsets.only(left: 48.0, top: 16.0, bottom: 16.0),
+                    const EdgeInsets.only(left: 48.0, top: 46.0, bottom: 16.0),
                 child: Image.asset(
                   'assets/images/imiziLogo.jpg',
                 ),
@@ -121,6 +279,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 380.0,
                         padding: const EdgeInsets.only(left: 16, right: 16),
                         child: CupertinoTextField(
+                          enableSuggestions: false,
                           controller: userName,
                           decoration: BoxDecoration(
                               color: theme.colorScheme.background,
@@ -150,6 +309,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 380.0,
                         padding: const EdgeInsets.only(left: 16, right: 16),
                         child: CupertinoTextField(
+                          enableSuggestions: false,
                           controller: password,
                           obscureText: _passwordVisible,
                           decoration: BoxDecoration(
